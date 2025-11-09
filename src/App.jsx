@@ -88,6 +88,40 @@ export const puzzles = [
     isNew: true,
     category: 'mature',
     mature: true
+  },
+  {
+    id: 8,
+    title: 'ミッドナイトアーティスト',
+    image: '/images/Pixabayアニメ男性_1.png',
+    difficulty: 'HARD',
+    pieces: 25,
+    cost: 120,
+    isNew: false,
+    category: 'mature',
+    mature: true
+  },
+  {
+    id: 9,
+    title: 'ダークヒーロー',
+    image: '/images/アニメ風イケメン_1.jpg',
+    difficulty: 'EXPERT',
+    pieces: 36,
+    cost: 180,
+    isNew: true,
+    isHot: true,
+    category: 'mature',
+    mature: true
+  },
+  {
+    id: 10,
+    title: 'シークレットボス',
+    image: '/images/Pixabay AI男性_1.png',
+    difficulty: 'EXPERT',
+    pieces: 36,
+    cost: 200,
+    isNew: true,
+    category: 'mature',
+    mature: true
   }
 ]
 
@@ -165,8 +199,8 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <div className="phone-frame">
+    <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
+      <div className={`phone-frame ${darkMode ? 'dark-mode' : ''}`}>
         {renderScreen()}
         {currentScreen !== 'game' && (
           <Navigation

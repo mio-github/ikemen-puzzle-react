@@ -9,7 +9,7 @@ const Collection = ({ puzzles, completedPuzzles, darkMode }) => {
   const maturePuzzles = puzzles.filter(p => p.mature)
 
   return (
-    <div className="screen collection-screen">
+    <div className={`screen collection-screen ${darkMode ? 'dark-mode' : ''}`}>
       {/* Header */}
       <header className="screen-header">
         <h1 className="screen-title">

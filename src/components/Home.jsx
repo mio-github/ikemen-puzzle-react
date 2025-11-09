@@ -8,7 +8,7 @@ const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, toggleDar
   ]
 
   return (
-    <div className="screen home-screen">
+    <div className={`screen home-screen ${darkMode ? 'dark-mode' : ''}`}>
       {/* Header */}
       <header className="home-header">
         <div className="logo">

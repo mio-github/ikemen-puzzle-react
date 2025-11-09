@@ -3,6 +3,29 @@
   display: flex;
   flex-direction: column;
   background: #000000;
+  transition: background 0.5s ease;
+}
+
+.collection-screen.dark-mode {
+  background: linear-gradient(180deg, #0a0010 0%, #1a0a1a 100%);
+}
+
+.collection-screen.dark-mode .stats-circle circle {
+  stroke: #aa66ff !important;
+}
+
+.collection-screen.dark-mode .stats-rate {
+  color: #dd99ff;
+}
+
+.collection-screen.dark-mode .collection-item {
+  border-color: #2a1a2a;
+  background: #0a0010;
+}
+
+.collection-screen.dark-mode .collection-item.unlocked:hover {
+  border-color: #aa66ff;
+  box-shadow: 0 8px 24px rgba(170, 102, 255, 0.3);
 }
 
 .collection-stats {

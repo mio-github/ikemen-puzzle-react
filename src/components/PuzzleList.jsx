@@ -12,7 +12,7 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
   }
 
   return (
-    <div className="screen puzzle-list-screen">
+    <div className={`screen puzzle-list-screen ${darkMode ? 'dark-mode' : ''}`}>
       {/* Header */}
       <header className="screen-header">
         <h1 className="screen-title">

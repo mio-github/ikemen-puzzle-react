@@ -4,6 +4,35 @@
   flex-direction: column;
   background: #000000;
   animation: fadeIn 0.6s ease-out;
+  transition: background 0.5s ease;
+}
+
+.home-screen.dark-mode {
+  background: linear-gradient(180deg, #0a0010 0%, #1a0a1a 100%);
+}
+
+.home-screen.dark-mode .event-banner {
+  background: linear-gradient(135deg, #aa66ff 0%, #dd99ff 100%);
+  color: #000000;
+}
+
+.home-screen.dark-mode .event-badge {
+  background: #000000;
+  color: #aa66ff;
+}
+
+.home-screen.dark-mode .stat-card.premium {
+  background: linear-gradient(135deg, #2a1a2a 0%, #3a2a3a 100%);
+  border-color: #aa66ff;
+}
+
+.home-screen.dark-mode .action-btn.primary {
+  background: linear-gradient(135deg, #aa66ff 0%, #dd99ff 100%);
+  color: #000000;
+}
+
+.home-screen.dark-mode .action-btn.primary:hover {
+  box-shadow: 0 8px 24px rgba(170, 102, 255, 0.4);
 }
 
 .home-header {
