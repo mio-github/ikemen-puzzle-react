@@ -1,6 +1,6 @@
 import './PuzzleList.css'
 
-const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles }) => {
+const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
   const getDifficultyStars = (difficulty) => {
     const stars = {
       'EASY': 1,
@@ -18,11 +18,17 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles }) => {
         <h1 className="screen-title">
           <span className="title-icon">⊞</span>
           PUZZLE COLLECTION
+          {darkMode && <span style={{ marginLeft: '8px', fontSize: '12px' }}>🌙</span>}
         </h1>
         <div className="header-stats">
           <span className="stat-badge">
             {completedPuzzles.length}/{puzzles.length} COMPLETED
           </span>
+          {darkMode && (
+            <span className="stat-badge" style={{ background: '#ffffff', color: '#000', marginLeft: '8px' }}>
+              MATURE OK
+            </span>
+          )}
         </div>
       </header>
 

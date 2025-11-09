@@ -1,6 +1,6 @@
 import './Home.css'
 
-const Home = ({ navigateTo, userPoints, coins, premiumCoins }) => {
+const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, toggleDarkMode }) => {
   const missions = [
     { id: 1, title: 'Login Bonus', progress: '1/1', reward: 50, completed: true },
     { id: 2, title: 'Complete 3 Puzzles', progress: '1/3', reward: 100, completed: false },
@@ -18,8 +18,27 @@ const Home = ({ navigateTo, userPoints, coins, premiumCoins }) => {
             <div className="logo-sub">PUZZLE</div>
           </div>
         </div>
-        <div className="user-avatar">
-          <div className="avatar-circle">S</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={toggleDarkMode}
+            className="dark-mode-toggle"
+            style={{
+              background: darkMode ? '#ffffff' : '#1a1a1a',
+              color: darkMode ? '#000000' : '#ffffff',
+              border: `1px solid ${darkMode ? '#ffffff' : '#333'}`,
+              padding: '8px 12px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {darkMode ? '🌙 DARK' : '☀️ LIGHT'}
+          </button>
+          <div className="user-avatar">
+            <div className="avatar-circle">S</div>
+          </div>
         </div>
       </header>
 
