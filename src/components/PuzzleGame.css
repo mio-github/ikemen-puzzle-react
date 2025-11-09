@@ -1,0 +1,220 @@
+.puzzle-game-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  overflow: hidden;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 24px 16px;
+  background: linear-gradient(180deg, #0a0a0a 0%, transparent 100%);
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #333;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  border-color: #666;
+  background: rgba(255,255,255,0.05);
+}
+
+.game-info {
+  display: flex;
+  gap: 16px;
+}
+
+.game-stat {
+  text-align: right;
+}
+
+.stat-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* Progress Bar */
+.progress-container {
+  padding: 0 24px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #222;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffffff 0%, #999 100%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Game Content */
+.game-content {
+  flex: 1;
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+/* Puzzle Board */
+.puzzle-board-container {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #0a0a0a;
+  border: 2px solid #222;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  overflow: visible;
+}
+
+.puzzle-board-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.puzzle-slot {
+  transition: all 0.2s ease;
+}
+
+.puzzle-slot:hover {
+  fill: rgba(255,255,255,0.1);
+}
+
+/* Pieces Palette */
+.pieces-palette {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.palette-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #ffffff;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pieces-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.pieces-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pieces-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.piece-wrapper {
+  aspect-ratio: 1;
+  border: 2px solid #222;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background: #0a0a0a;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.piece-wrapper:hover {
+  transform: translateY(-4px) scale(1.05);
+  border-color: #444;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+}
+
+.piece-wrapper.selected {
+  border-color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255,255,255,0.3);
+}
+
+.piece-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.8;
+  }
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .puzzle-board {
+    gap: 1px;
+  }
+
+  .pieces-container {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 6px;
+  }
+}
