@@ -125,6 +125,63 @@ npm run preview
 - **Pure CSS**: アニメーション、レイアウト
 - **ES Modules**: モダンなJavaScript
 
+## ☁️ Vercelへのデプロイ
+
+### 方法1: GitHubからの自動デプロイ（推奨）
+
+1. **Vercelアカウントにログイン**
+   - https://vercel.com にアクセス
+   - GitHubアカウントで認証
+
+2. **新規プロジェクトのインポート**
+   - "Add New" → "Project" をクリック
+   - GitHubリポジトリを選択: `mio-github/ikemen-puzzle-react`
+
+3. **ビルド設定の確認**
+   - Framework Preset: `Vite` （自動検出）
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Install Command: `npm install`
+
+4. **デプロイ**
+   - "Deploy" ボタンをクリック
+   - 数分で自動デプロイが完了
+
+### 方法2: Vercel CLIを使用
+
+```bash
+# Vercel CLIをインストール
+npm install -g vercel
+
+# ログイン
+vercel login
+
+# デプロイ
+vercel
+
+# 本番環境へデプロイ
+vercel --prod
+```
+
+### デプロイ後のURL
+
+デプロイが完了すると、以下のような形式のURLが発行されます：
+- **本番**: `https://ikemen-puzzle-react.vercel.app`
+- **プレビュー**: `https://ikemen-puzzle-react-[hash].vercel.app`
+
+### 自動デプロイの設定
+
+GitHubと連携している場合、以下のブランチへのpushで自動デプロイされます：
+- `main` ブランチ → 本番環境
+- その他のブランチ → プレビュー環境
+
+### カスタムドメインの設定
+
+Vercelダッシュボードから独自ドメインを設定できます：
+1. プロジェクトの "Settings" → "Domains" を開く
+2. カスタムドメインを追加
+3. DNSレコードを設定（ガイドに従う）
+
 ## 💡 今後の拡張案
 
 - [ ] ドラッグ&ドロップ機能
