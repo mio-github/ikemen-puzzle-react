@@ -79,6 +79,12 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
                   e.target.parentElement.classList.add('no-image')
                 }} />
                 <div className="image-overlay"></div>
+                <div className="card-info-overlay">
+                  <div className="play-label">
+                    <span>▶</span>
+                    <span>PLAY</span>
+                  </div>
+                </div>
               </div>
 
               {/* Info */}
@@ -88,9 +94,7 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
                   <span className="difficulty">
                     {getDifficultyStars(puzzle.difficulty)}
                   </span>
-                  <span className="pieces">{puzzle.pieces} PIECES</span>
-                </div>
-                <div className="card-category">
+                  <span className="pieces">{puzzle.pieces}P</span>
                   <span
                     className="category-badge"
                     style={{
@@ -105,9 +109,8 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
                   {puzzle.cost === 0 ? (
                     <span className="cost free">FREE</span>
                   ) : (
-                    <span className="cost paid">{puzzle.cost} PT</span>
+                    <span className="cost paid">{puzzle.cost}PT</span>
                   )}
-                  <span className="play-icon">▶</span>
                 </div>
               </div>
             </div>
