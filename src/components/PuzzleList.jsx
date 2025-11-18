@@ -11,6 +11,30 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
     return '★'.repeat(stars[difficulty] || 1) + '☆'.repeat(4 - (stars[difficulty] || 1))
   }
 
+  const getCategoryLabel = (category) => {
+    const labels = {
+      'anime': 'ANIME',
+      'business': 'BUSINESS',
+      'casual': 'CASUAL',
+      'fantasy': 'FANTASY',
+      'modern': 'MODERN',
+      'mature': 'PREMIUM'
+    }
+    return labels[category] || category.toUpperCase()
+  }
+
+  const getCategoryColor = (category) => {
+    const colors = {
+      'anime': '#ff69b4',     // ピンク
+      'business': '#4169e1',  // ブルー
+      'casual': '#ffa500',    // オレンジ
+      'fantasy': '#9370db',   // パープル
+      'modern': '#00bfff',    // スカイブルー
+      'mature': '#8a2be2'     // ダークパープル
+    }
+    return colors[category] || '#999'
+  }
+
   return (
     <div className={`screen puzzle-list-screen ${darkMode ? 'dark-mode' : ''}`}>
       {/* Header */}
@@ -65,6 +89,17 @@ const PuzzleList = ({ puzzles, startPuzzle, completedPuzzles, darkMode }) => {
                     {getDifficultyStars(puzzle.difficulty)}
                   </span>
                   <span className="pieces">{puzzle.pieces} PIECES</span>
+                </div>
+                <div className="card-category">
+                  <span
+                    className="category-badge"
+                    style={{
+                      borderColor: getCategoryColor(puzzle.category),
+                      color: getCategoryColor(puzzle.category)
+                    }}
+                  >
+                    {getCategoryLabel(puzzle.category)}
+                  </span>
                 </div>
                 <div className="card-footer">
                   {puzzle.cost === 0 ? (

@@ -8,31 +8,46 @@
 }
 
 .home-screen.dark-mode {
-  background: linear-gradient(180deg, #0a0010 0%, #1a0a1a 100%);
+  background: #000000;
 }
 
 .home-screen.dark-mode .event-banner {
-  background: linear-gradient(135deg, #aa66ff 0%, #dd99ff 100%);
-  color: #000000;
+  background: #000000;
+  border: 2px solid #8a2be2;
+  color: #8a2be2;
+  box-shadow:
+    0 0 20px rgba(138, 43, 226, 0.5),
+    inset 0 0 20px rgba(138, 43, 226, 0.1);
+  text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
 }
 
 .home-screen.dark-mode .event-badge {
-  background: #000000;
-  color: #aa66ff;
+  background: #8a2be2;
+  color: #000000;
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
 }
 
 .home-screen.dark-mode .stat-card.premium {
-  background: linear-gradient(135deg, #2a1a2a 0%, #3a2a3a 100%);
-  border-color: #aa66ff;
+  background: #000000;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
 }
 
 .home-screen.dark-mode .action-btn.primary {
-  background: linear-gradient(135deg, #aa66ff 0%, #dd99ff 100%);
-  color: #000000;
+  background: #000000;
+  border: 2px solid #8a2be2;
+  color: #8a2be2;
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.6);
+  text-shadow: 0 0 8px rgba(138, 43, 226, 0.8);
 }
 
 .home-screen.dark-mode .action-btn.primary:hover {
-  box-shadow: 0 8px 24px rgba(170, 102, 255, 0.4);
+  background: #8a2be2;
+  color: #000000;
+  box-shadow:
+    0 0 30px rgba(138, 43, 226, 0.9),
+    0 8px 24px rgba(138, 43, 226, 0.6);
+  text-shadow: none;
 }
 
 .home-header {

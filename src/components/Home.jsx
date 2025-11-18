@@ -1,6 +1,6 @@
 import './Home.css'
 
-const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, toggleDarkMode }) => {
+const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, darkModeUnlocked, toggleDarkMode }) => {
   const missions = [
     { id: 1, title: 'Login Bonus', progress: '1/1', reward: 50, completed: true },
     { id: 2, title: 'Complete 3 Puzzles', progress: '1/3', reward: 100, completed: false },
@@ -23,9 +23,9 @@ const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, toggleDar
             onClick={toggleDarkMode}
             className="dark-mode-toggle"
             style={{
-              background: darkMode ? '#ffffff' : '#1a1a1a',
-              color: darkMode ? '#000000' : '#ffffff',
-              border: `1px solid ${darkMode ? '#ffffff' : '#333'}`,
+              background: darkModeUnlocked ? (darkMode ? '#ffffff' : '#1a1a1a') : '#333',
+              color: darkModeUnlocked ? (darkMode ? '#000000' : '#ffffff') : '#999',
+              border: `1px solid ${darkModeUnlocked ? (darkMode ? '#ffffff' : '#333') : '#555'}`,
               padding: '8px 12px',
               borderRadius: '20px',
               fontSize: '11px',
@@ -34,7 +34,9 @@ const Home = ({ navigateTo, userPoints, coins, premiumCoins, darkMode, toggleDar
               transition: 'all 0.3s ease'
             }}
           >
-            {darkMode ? '🌙 DARK' : '☀️ LIGHT'}
+            {darkModeUnlocked
+              ? (darkMode ? '🌙 DARK' : '☀️ LIGHT')
+              : '🔒 DARK (200☺)'}
           </button>
           <div className="user-avatar">
             <div className="avatar-circle">S</div>

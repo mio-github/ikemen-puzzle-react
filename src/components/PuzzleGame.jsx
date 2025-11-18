@@ -401,7 +401,7 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
         <div className="puzzle-board-container" style={{ position: 'relative' }}>
           <svg
             className="puzzle-board-svg"
-            viewBox={`-30 -30 ${gridSize * 100 + 60} ${gridSize * 100 + 60}`}
+            viewBox={`0 0 ${gridSize * 100} ${gridSize * 100}`}
             preserveAspectRatio="xMidYMid meet"
           >
             {/* 背景グリッド */}
@@ -534,7 +534,7 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                 >
                   <svg
                     className="piece-svg"
-                    viewBox="-30 -30 160 160"
+                    viewBox="-25 -25 150 150"
                     preserveAspectRatio="xMidYMid meet"
                   >
                     <defs>

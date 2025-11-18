@@ -1,6 +1,6 @@
 import './Collection.css'
 
-const Collection = ({ puzzles, completedPuzzles, darkMode }) => {
+const Collection = ({ puzzles, completedPuzzles, darkMode, userPoints, requestCounts, onSendRequest }) => {
   const totalSlots = 30
   const completionRate = Math.floor((completedPuzzles.length / totalSlots) * 100)
 
@@ -16,8 +16,9 @@ const Collection = ({ puzzles, completedPuzzles, darkMode }) => {
           <span className="title-icon">♥</span>
           COLLECTION
         </h1>
-        <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>
-          {darkMode ? '🌙 Dark Mode - All Content' : '☀️ Normal Mode'}
+        <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{darkMode ? '🌙 Dark Mode - All Content' : '☀️ Normal Mode'}</span>
+          <span style={{ color: '#ffffff' }}>所持: {userPoints}pt</span>
         </div>
       </header>
 
@@ -69,13 +70,27 @@ const Collection = ({ puzzles, completedPuzzles, darkMode }) => {
           <div className="collection-grid">
             {normalPuzzles.map((puzzle) => {
               const isCompleted = completedPuzzles.includes(puzzle.id)
+              const requestCount = requestCounts[puzzle.id] || 0
               return (
                 <div
                   key={puzzle.id}
                   className={`collection-item ${isCompleted ? 'unlocked' : 'locked'}`}
                 >
                   {isCompleted ? (
-                    <img src={puzzle.image} alt={puzzle.title} />
+                    <>
+                      <img src={puzzle.image} alt={puzzle.title} />
+                      <div className="item-badge normal-badge">NORMAL</div>
+                      {requestCount > 0 && (
+                        <div className="request-count">🔥 {requestCount}</div>
+                      )}
+                      <button
+                        className="request-btn"
+                        onClick={() => onSendRequest(puzzle.id)}
+                        title="続きを熱望！(50pt)"
+                      >
+                        🔥
+                      </button>
+                    </>
                   ) : (
                     <div className="locked-overlay">
                       <span className="lock-icon">🔒</span>
@@ -109,14 +124,28 @@ const Collection = ({ puzzles, completedPuzzles, darkMode }) => {
             <div className="collection-grid">
               {maturePuzzles.map((puzzle) => {
                 const isCompleted = completedPuzzles.includes(puzzle.id)
+                const requestCount = requestCounts[puzzle.id] || 0
                 return (
                   <div
                     key={puzzle.id}
                     className={`collection-item ${isCompleted ? 'unlocked' : 'locked'} mature`}
-                    style={{ border: '2px solid #ffffff' }}
+                    style={{ border: '2px solid #8a2be2' }}
                   >
                     {isCompleted ? (
-                      <img src={puzzle.image} alt={puzzle.title} />
+                      <>
+                        <img src={puzzle.image} alt={puzzle.title} />
+                        <div className="item-badge premium-badge">🌙 PREMIUM</div>
+                        {requestCount > 0 && (
+                          <div className="request-count premium-count">🔥 {requestCount}</div>
+                        )}
+                        <button
+                          className="request-btn premium-request-btn"
+                          onClick={() => onSendRequest(puzzle.id)}
+                          title="続きを熱望！(50pt)"
+                        >
+                          🔥
+                        </button>
+                      </>
                     ) : (
                       <div className="locked-overlay" style={{ background: '#1a1a1a' }}>
                         <span className="lock-icon">🔞</span>
