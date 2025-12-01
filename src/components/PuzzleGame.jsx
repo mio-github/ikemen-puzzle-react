@@ -1,23 +1,25 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './PuzzleGame.css'
 
 const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
   const [pieces, setPieces] = useState([])
-  const [selectedPiece, setSelectedPiece] = useState(null)
-  const [placedPieces, setPlacedPieces] = useState([])
   const [timer, setTimer] = useState(0)
   const [score, setScore] = useState(0)
+  const [glowingGroup, setGlowingGroup] = useState(null)
+  const [dragging, setDragging] = useState(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const timerRef = useRef(null)
-  const canvasRef = useRef(null)
-  const imageRef = useRef(null)
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const [draggedPiece, setDraggedPiece] = useState(null)
-  const [dropTarget, setDropTarget] = useState(null)
+  const boardRef = useRef(null)
+  const containerRef = useRef(null)
 
   // グリッドサイズを計算
   const gridSize = Math.sqrt(puzzle.pieces)
 
-  // シード値ベースの乱数生成
+  // ピースサイズ（SVG単位）- ボード上での1ピースのサイズ
+  const PIECE_SIZE = 50
+  const SNAP_THRESHOLD = 15 // スナップ判定の距離
+
+  // シード値ベースの乱数生成（Draradechアルゴリズム準拠）
   const createRandom = (seed) => {
     let s = seed
     return () => {
@@ -27,14 +29,22 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
     }
   }
 
+  // Draradechアルゴリズムのパラメータ
+  // 参考: https://github.com/Draradech/jigsaw
+  const TAB_SIZE = 0.1    // タブサイズ 20% → 20/200 = 0.1
+  const JITTER = 0.04     // ジッター 4% → 4/100 = 0.04
+
   // ジグソーピースの形状データを生成（Draradechアルゴリズム準拠）
-  const generateJigsawShape = (row, col, gridSize, edgeData) => {
-    const tabSize = 0.2 // タブサイズ（20%）
-    const jitter = 0.04 // ジッター（4%）
+  const generateJigsawShape = useCallback((row, col, gridSize, edgeData) => {
+    const t = TAB_SIZE
+    const j = JITTER
 
     // 各エッジのフリップ状態とジッター値を保存
-    if (!edgeData.horizontal) edgeData.horizontal = []
-    if (!edgeData.vertical) edgeData.vertical = []
+    if (!edgeData.horizontal) edgeData.horizontal = {}
+    if (!edgeData.vertical) edgeData.vertical = {}
+
+    // 一様乱数 [-j, j]
+    const uniform = (random) => random() * j * 2 - j
 
     const getHorizontalEdge = (r, c) => {
       const key = `h_${r}_${c}`
@@ -42,10 +52,11 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
         const random = createRandom(puzzle.id * 1000 + r * 100 + c)
         edgeData.horizontal[key] = {
           flip: random() > 0.5,
-          b: random() * jitter * 2 - jitter,
-          c: random() * jitter * 2 - jitter,
-          d: random() * jitter * 2 - jitter,
-          e: random() * jitter * 2 - jitter
+          a: uniform(random),
+          b: uniform(random),
+          c: uniform(random),
+          d: uniform(random),
+          e: uniform(random)
         }
       }
       return edgeData.horizontal[key]
@@ -57,10 +68,11 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
         const random = createRandom(puzzle.id * 2000 + r * 100 + c)
         edgeData.vertical[key] = {
           flip: random() > 0.5,
-          b: random() * jitter * 2 - jitter,
-          c: random() * jitter * 2 - jitter,
-          d: random() * jitter * 2 - jitter,
-          e: random() * jitter * 2 - jitter
+          a: uniform(random),
+          b: uniform(random),
+          c: uniform(random),
+          d: uniform(random),
+          e: uniform(random)
         }
       }
       return edgeData.vertical[key]
@@ -71,10 +83,11 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
       if (!edge) return null
       return {
         flip: !edge.flip, // タブ/ソケットを反転
-        b: edge.b,  // bは位置なので同じ
-        c: edge.c,  // cも同じ
-        d: edge.d,  // dも同じ
-        e: edge.e   // eも同じ
+        a: edge.a,
+        b: edge.b,
+        c: edge.c,
+        d: edge.d,
+        e: edge.e
       }
     }
 
@@ -87,92 +100,89 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
       bottom: row < gridSize - 1 ? getHorizontalEdge(row + 1, col) : null,
       // 左辺：col列の垂直エッジを反転して使用
       left: col > 0 ? reverseEdge(getVerticalEdge(row, col)) : null,
-      tabSize,
-      jitter
+      t,
+      j
     }
-  }
+  }, [puzzle.id])
 
-  // SVGパスを生成（Draradechアルゴリズム準拠の3段階ベジェ曲線）
+  // SVGパスを生成（Draradechアルゴリズム - 10制御点方式）
+  // 参考: https://github.com/Draradech/jigsaw
   const createPiecePath = (shape, pieceWidth, pieceHeight) => {
-    const { top, right, bottom, left, tabSize } = shape
+    const { top, right, bottom, left, t } = shape
     const w = pieceWidth
     const h = pieceHeight
-    const t = tabSize
+
+    // Draradechアルゴリズムの10制御点を計算
+    // p0→p3: 肩から首へ, p3→p6: 頭部分, p6→p9: 首から肩へ
+    const getDraradechPoints = (edge, segmentLen) => {
+      if (!edge) return null
+
+      const { flip, a, b, c, d, e } = edge
+      const s = segmentLen
+      const dir = flip ? -1 : 1
+
+      // 長さ方向の座標 (0→1の正規化座標をピクセルに変換)
+      const l = (v) => s * v
+
+      // 幅方向の座標 (flipで符号反転)
+      const wCoord = (v) => s * v * dir
+
+      return {
+        p0: { l: l(0.0), w: wCoord(0) },
+        p1: { l: l(0.2), w: wCoord(a) },
+        p2: { l: l(0.5 + b + d), w: wCoord(-t + c) },
+        p3: { l: l(0.5 - t + b), w: wCoord(t + c) },
+        p4: { l: l(0.5 - 2*t + b - d), w: wCoord(3*t + c) },
+        p5: { l: l(0.5 + 2*t + b - d), w: wCoord(3*t + c) },
+        p6: { l: l(0.5 + t + b), w: wCoord(t + c) },
+        p7: { l: l(0.5 + b + d), w: wCoord(-t + c) },
+        p8: { l: l(0.8), w: wCoord(e) },
+        p9: { l: l(1.0), w: wCoord(0) }
+      }
+    }
 
     let path = `M 0 0`
 
-    // 上辺 (左から右へ)
+    // 上辺 (左から右へ、y=0がベースライン)
     if (top) {
-      const { flip, b, c, d, e } = top
-      const sign = flip ? 1 : -1
-      path += `
-        C ${w * 0.2} ${h * e * sign},
-          ${w * (0.5 + b + d)} ${h * (-t + c) * sign},
-          ${w * (0.5 - t + b)} ${h * (t + c) * sign}
-        C ${w * (0.5 - 2 * t + b - d)} ${h * (3 * t + c) * sign},
-          ${w * (0.5 + 2 * t + b - d)} ${h * (3 * t + c) * sign},
-          ${w * (0.5 + t + b)} ${h * (t + c) * sign}
-        C ${w * (0.5 + b + d)} ${h * (-t + c) * sign},
-          ${w * 0.8} ${h * e * sign},
-          ${w} 0
-      `
+      const pts = getDraradechPoints(top, w)
+      // l→x, w→y (上向きが負なのでそのまま)
+      path += ` C ${pts.p1.l} ${pts.p1.w}, ${pts.p2.l} ${pts.p2.w}, ${pts.p3.l} ${pts.p3.w}`
+      path += ` C ${pts.p4.l} ${pts.p4.w}, ${pts.p5.l} ${pts.p5.w}, ${pts.p6.l} ${pts.p6.w}`
+      path += ` C ${pts.p7.l} ${pts.p7.w}, ${pts.p8.l} ${pts.p8.w}, ${pts.p9.l} ${pts.p9.w}`
     } else {
       path += ` L ${w} 0`
     }
 
-    // 右辺 (上から下へ)
+    // 右辺 (上から下へ、x=wがベースライン)
     if (right) {
-      const { flip, b, c, d, e } = right
-      const sign = flip ? 1 : -1
-      path += `
-        C ${w + h * e * sign} ${h * 0.2},
-          ${w + h * (-t + c) * sign} ${h * (0.5 + b + d)},
-          ${w + h * (t + c) * sign} ${h * (0.5 - t + b)}
-        C ${w + h * (3 * t + c) * sign} ${h * (0.5 - 2 * t + b - d)},
-          ${w + h * (3 * t + c) * sign} ${h * (0.5 + 2 * t + b - d)},
-          ${w + h * (t + c) * sign} ${h * (0.5 + t + b)}
-        C ${w + h * (-t + c) * sign} ${h * (0.5 + b + d)},
-          ${w + h * e * sign} ${h * 0.8},
-          ${w} ${h}
-      `
+      const pts = getDraradechPoints(right, h)
+      // l→y, w→x (右向きが正なのでwを加算)
+      path += ` C ${w + pts.p1.w} ${pts.p1.l}, ${w + pts.p2.w} ${pts.p2.l}, ${w + pts.p3.w} ${pts.p3.l}`
+      path += ` C ${w + pts.p4.w} ${pts.p4.l}, ${w + pts.p5.w} ${pts.p5.l}, ${w + pts.p6.w} ${pts.p6.l}`
+      path += ` C ${w + pts.p7.w} ${pts.p7.l}, ${w + pts.p8.w} ${pts.p8.l}, ${w + pts.p9.w} ${pts.p9.l}`
     } else {
       path += ` L ${w} ${h}`
     }
 
-    // 下辺 (右から左へ)
+    // 下辺 (右から左へ、y=hがベースライン)
     if (bottom) {
-      const { flip, b, c, d, e } = bottom
-      const sign = flip ? -1 : 1
-      path += `
-        C ${w * 0.8} ${h + h * e * sign},
-          ${w * (0.5 - b - d)} ${h + h * (-t + c) * sign},
-          ${w * (0.5 + t - b)} ${h + h * (t + c) * sign}
-        C ${w * (0.5 + 2 * t - b + d)} ${h + h * (3 * t + c) * sign},
-          ${w * (0.5 - 2 * t - b + d)} ${h + h * (3 * t + c) * sign},
-          ${w * (0.5 - t - b)} ${h + h * (t + c) * sign}
-        C ${w * (0.5 - b - d)} ${h + h * (-t + c) * sign},
-          ${w * 0.2} ${h + h * e * sign},
-          0 ${h}
-      `
+      const pts = getDraradechPoints(bottom, w)
+      // 右から左なので、lを反転 (w - l)、wは下向きが正なので加算
+      path += ` C ${w - pts.p1.l} ${h + pts.p1.w}, ${w - pts.p2.l} ${h + pts.p2.w}, ${w - pts.p3.l} ${h + pts.p3.w}`
+      path += ` C ${w - pts.p4.l} ${h + pts.p4.w}, ${w - pts.p5.l} ${h + pts.p5.w}, ${w - pts.p6.l} ${h + pts.p6.w}`
+      path += ` C ${w - pts.p7.l} ${h + pts.p7.w}, ${w - pts.p8.l} ${h + pts.p8.w}, ${w - pts.p9.l} ${h + pts.p9.w}`
     } else {
       path += ` L 0 ${h}`
     }
 
-    // 左辺 (下から上へ)
+    // 左辺 (下から上へ、x=0がベースライン)
     if (left) {
-      const { flip, b, c, d, e } = left
-      const sign = flip ? -1 : 1
-      path += `
-        C ${w * e * sign} ${h * 0.8},
-          ${w * (-t + c) * sign} ${h * (0.5 - b - d)},
-          ${w * (t + c) * sign} ${h * (0.5 + t - b)}
-        C ${w * (3 * t + c) * sign} ${h * (0.5 + 2 * t - b + d)},
-          ${w * (3 * t + c) * sign} ${h * (0.5 - 2 * t - b + d)},
-          ${w * (t + c) * sign} ${h * (0.5 - t - b)}
-        C ${w * (-t + c) * sign} ${h * (0.5 - b - d)},
-          ${w * e * sign} ${h * 0.2},
-          0 0
-      `
+      const pts = getDraradechPoints(left, h)
+      // 下から上なのでlを反転 (h - l)、wは左向きが負なので減算
+      path += ` C ${-pts.p1.w} ${h - pts.p1.l}, ${-pts.p2.w} ${h - pts.p2.l}, ${-pts.p3.w} ${h - pts.p3.l}`
+      path += ` C ${-pts.p4.w} ${h - pts.p4.l}, ${-pts.p5.w} ${h - pts.p5.l}, ${-pts.p6.w} ${h - pts.p6.l}`
+      path += ` C ${-pts.p7.w} ${h - pts.p7.l}, ${-pts.p8.w} ${h - pts.p8.l}, ${-pts.p9.w} ${h - pts.p9.l}`
     } else {
       path += ` L 0 0`
     }
@@ -185,7 +195,6 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
   useEffect(() => {
     initializePuzzle()
 
-    // タイマー開始
     timerRef.current = setInterval(() => {
       setTimer(prev => prev + 1)
     }, 1000)
@@ -195,156 +204,288 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
     }
   }, [])
 
-  // 画像読み込み
-  useEffect(() => {
-    const img = new Image()
-    img.src = puzzle.image
-    img.onload = () => {
-      setImageLoaded(true)
-      imageRef.current = img
-    }
-  }, [puzzle.image])
-
   const initializePuzzle = () => {
-    const edgeData = { horizontal: [], vertical: [] }
+    const edgeData = { horizontal: {}, vertical: {} }
     const newPieces = []
+
+    // ボードのサイズを取得（初期配置用）
+    const boardWidth = gridSize * PIECE_SIZE
+    const boardHeight = gridSize * PIECE_SIZE
 
     for (let i = 0; i < puzzle.pieces; i++) {
       const row = Math.floor(i / gridSize)
       const col = i % gridSize
       const shape = generateJigsawShape(row, col, gridSize, edgeData)
 
+      // 初期位置をランダムに散らばらせる（ボード下部の領域に）
+      const randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
+      const randomY = Math.round(boardHeight + 30 + Math.random() * 100)
+
       newPieces.push({
         id: i,
-        correctIndex: i,
         row,
         col,
         shape,
-        isPlaced: false
+        x: randomX,
+        y: randomY,
+        groupId: i, // 初期状態では各ピースが独立したグループ
+        zIndex: i
       })
     }
-    // シャッフル
-    const shuffled = [...newPieces].sort(() => Math.random() - 0.5)
+
+    // シャッフルしてz-indexを設定
+    const shuffled = newPieces.sort(() => Math.random() - 0.5)
+    shuffled.forEach((piece, index) => {
+      piece.zIndex = index
+    })
+
     setPieces(shuffled)
-    setPlacedPieces([])
   }
 
-  const handlePieceClick = (piece) => {
-    if (piece.isPlaced) return
+  // グループ内のピースを取得
+  const getGroupPieces = useCallback((groupId) => {
+    return pieces.filter(p => p.groupId === groupId)
+  }, [pieces])
 
-    if (selectedPiece && selectedPiece.id === piece.id) {
-      setSelectedPiece(null)
-    } else {
-      setSelectedPiece(piece)
+  // 2つのピースが隣接関係にあるかチェック
+  const areNeighbors = (piece1, piece2) => {
+    const rowDiff = piece1.row - piece2.row
+    const colDiff = piece1.col - piece2.col
+    return (Math.abs(rowDiff) === 1 && colDiff === 0) ||
+           (rowDiff === 0 && Math.abs(colDiff) === 1)
+  }
+
+  // ピースの正しい相対位置を計算
+  const getCorrectRelativePosition = (basePiece, targetPiece) => {
+    const rowDiff = targetPiece.row - basePiece.row
+    const colDiff = targetPiece.col - basePiece.col
+    return {
+      x: colDiff * PIECE_SIZE,
+      y: rowDiff * PIECE_SIZE
     }
   }
+
+  // 隣接ピースとの結合判定
+  const checkAndMerge = useCallback((movedPiece, allPieces) => {
+    const currentGroup = allPieces.filter(p => p.groupId === movedPiece.groupId)
+    let merged = false
+    let newGroupId = movedPiece.groupId
+    let mergedPieces = [...allPieces]
+
+    // 現在のグループの各ピースについて、隣接可能なピースをチェック
+    for (const groupPiece of currentGroup) {
+      for (const otherPiece of allPieces) {
+        // 同じグループはスキップ
+        if (otherPiece.groupId === groupPiece.groupId) continue
+
+        // 隣接関係にあるかチェック
+        if (!areNeighbors(groupPiece, otherPiece)) continue
+
+        // 正しい相対位置を計算
+        const correctRelPos = getCorrectRelativePosition(groupPiece, otherPiece)
+        const actualRelPos = {
+          x: otherPiece.x - groupPiece.x,
+          y: otherPiece.y - groupPiece.y
+        }
+
+        // 距離が閾値以内かチェック
+        const distance = Math.sqrt(
+          Math.pow(correctRelPos.x - actualRelPos.x, 2) +
+          Math.pow(correctRelPos.y - actualRelPos.y, 2)
+        )
+
+        if (distance < SNAP_THRESHOLD) {
+          merged = true
+          const otherGroupId = otherPiece.groupId
+
+          // 移動するグループのピースを、現在のグループに正確にスナップ
+          // groupPieceの位置を基準に、otherPieceが正しい相対位置になるように計算
+          const targetX = groupPiece.x + correctRelPos.x
+          const targetY = groupPiece.y + correctRelPos.y
+          const offsetX = targetX - otherPiece.x
+          const offsetY = targetY - otherPiece.y
+
+          mergedPieces = mergedPieces.map(p => {
+            if (p.groupId === otherGroupId) {
+              return {
+                ...p,
+                groupId: newGroupId,
+                // 整数に丸めて隙間を防ぐ
+                x: Math.round(p.x + offsetX),
+                y: Math.round(p.y + offsetY)
+              }
+            }
+            return p
+          })
+        }
+      }
+    }
+
+    return { merged, pieces: mergedPieces, groupId: newGroupId }
+  }, [PIECE_SIZE, SNAP_THRESHOLD])
+
+  // マウス/タッチ位置を取得
+  const getEventPosition = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    return { x: e.clientX, y: e.clientY }
+  }
+
+  // ピクセル座標をSVG座標に変換（preserveAspectRatio="xMidYMid meet"に対応）
+  const pixelToSvg = useCallback((pixelX, pixelY) => {
+    const boardRect = boardRef.current?.getBoundingClientRect()
+    if (!boardRect) return { x: 0, y: 0 }
+
+    // SVGのviewBox
+    const viewBoxWidth = gridSize * PIECE_SIZE
+    const viewBoxHeight = gridSize * PIECE_SIZE + 140
+
+    // preserveAspectRatio="xMidYMid meet"の場合、アスペクト比を維持
+    const containerAspect = boardRect.width / boardRect.height
+    const viewBoxAspect = viewBoxWidth / viewBoxHeight
+
+    let scale, offsetX, offsetY
+
+    if (containerAspect > viewBoxAspect) {
+      // コンテナが横長: 高さに合わせてスケール、左右に余白
+      scale = viewBoxHeight / boardRect.height
+      const scaledWidth = viewBoxWidth / scale
+      offsetX = (boardRect.width - scaledWidth) / 2
+      offsetY = 0
+    } else {
+      // コンテナが縦長: 幅に合わせてスケール、上下に余白
+      scale = viewBoxWidth / boardRect.width
+      const scaledHeight = viewBoxHeight / scale
+      offsetX = 0
+      offsetY = (boardRect.height - scaledHeight) / 2
+    }
+
+    return {
+      x: (pixelX - offsetX) * scale,
+      y: (pixelY - offsetY) * scale
+    }
+  }, [gridSize, PIECE_SIZE])
 
   // ドラッグ開始
   const handleDragStart = (e, piece) => {
-    if (piece.isPlaced) return
-    setDraggedPiece(piece)
-    setSelectedPiece(piece)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/html', e.target.innerHTML)
-  }
-
-  // ドラッグ終了
-  const handleDragEnd = () => {
-    setDraggedPiece(null)
-    setDropTarget(null)
-  }
-
-  // ドロップゾーンに入った
-  const handleDragOver = (e, slotIndex) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+    const pos = getEventPosition(e)
+    const boardRect = boardRef.current?.getBoundingClientRect()
 
-    // 既に配置済みのスロットではない場合のみハイライト
-    if (!placedPieces.some(p => p.correctIndex === slotIndex)) {
-      setDropTarget(slotIndex)
-    }
+    if (!boardRect) return
+
+    // グループ内の最大z-indexを取得して更新
+    const maxZ = Math.max(...pieces.map(p => p.zIndex))
+
+    setPieces(prev => prev.map(p => {
+      if (p.groupId === piece.groupId) {
+        return { ...p, zIndex: maxZ + 1 }
+      }
+      return p
+    }))
+
+    setDragging({
+      pieceId: piece.id,
+      groupId: piece.groupId
+    })
+
+    // ピクセル座標をSVG座標に変換してオフセットを計算
+    const svgPos = pixelToSvg(pos.x - boardRect.left, pos.y - boardRect.top)
+    setDragOffset({
+      x: svgPos.x - piece.x,
+      y: svgPos.y - piece.y
+    })
   }
 
-  // ドロップゾーンから出た
-  const handleDragLeave = () => {
-    setDropTarget(null)
-  }
-
-  // ドロップ
-  const handleDrop = (e, slotIndex) => {
+  // ドラッグ中
+  const handleDragMove = useCallback((e) => {
+    if (!dragging) return
     e.preventDefault()
 
+    const pos = getEventPosition(e)
+    const boardRect = boardRef.current?.getBoundingClientRect()
+
+    if (!boardRect) return
+
+    // ピクセル座標をSVG座標に変換
+    const svgPos = pixelToSvg(pos.x - boardRect.left, pos.y - boardRect.top)
+    const newX = svgPos.x - dragOffset.x
+    const newY = svgPos.y - dragOffset.y
+
+    const draggedPiece = pieces.find(p => p.id === dragging.pieceId)
     if (!draggedPiece) return
 
-    // 既に配置済みのスロット
-    if (placedPieces.some(p => p.correctIndex === slotIndex)) return
+    const deltaX = newX - draggedPiece.x
+    const deltaY = newY - draggedPiece.y
 
-    const isCorrect = draggedPiece.correctIndex === slotIndex
+    // グループ全体を移動
+    setPieces(prev => prev.map(p => {
+      if (p.groupId === dragging.groupId) {
+        return {
+          ...p,
+          x: p.x + deltaX,
+          y: p.y + deltaY
+        }
+      }
+      return p
+    }))
+  }, [dragging, dragOffset, pieces, pixelToSvg])
 
-    if (isCorrect) {
-      // 正解
-      const newPlacedPieces = [...placedPieces, { ...draggedPiece, isPlaced: true }]
-      setPlacedPieces(newPlacedPieces)
+  // ドラッグ終了
+  const handleDragEnd = useCallback(() => {
+    if (!dragging) return
 
-      setPieces(prev => prev.map(p =>
-        p.id === draggedPiece.id ? { ...p, isPlaced: true } : p
-      ))
+    const draggedPiece = pieces.find(p => p.id === dragging.pieceId)
+    if (!draggedPiece) {
+      setDragging(null)
+      return
+    }
 
-      setScore(prev => prev + 100)
-      setSelectedPiece(null)
-      setDraggedPiece(null)
-      setDropTarget(null)
+    // マージ判定
+    const result = checkAndMerge(draggedPiece, pieces)
 
-      // 全て完成したか
-      if (newPlacedPieces.length === puzzle.pieces) {
+    if (result.merged) {
+      setPieces(result.pieces)
+      setGlowingGroup(result.groupId)
+      setScore(prev => prev + 50)
+
+      // 光るエフェクトを解除
+      setTimeout(() => {
+        setGlowingGroup(null)
+      }, 600)
+
+      // 全て完成したかチェック
+      const groupIds = new Set(result.pieces.map(p => p.groupId))
+      if (groupIds.size === 1) {
         handleComplete()
       }
-    } else {
-      // 不正解
-      setScore(prev => Math.max(0, prev - 10))
-      setDropTarget(null)
-
-      // 振動フィードバック
-      if (navigator.vibrate) {
-        navigator.vibrate(100)
-      }
     }
-  }
 
-  const handleSlotClick = (slotIndex) => {
-    if (!selectedPiece) return
+    setDragging(null)
+  }, [dragging, pieces, checkAndMerge])
 
-    // 既に配置済みのスロット
-    if (placedPieces.some(p => p.correctIndex === slotIndex)) return
+  // グローバルイベントリスナー
+  useEffect(() => {
+    const handleMouseMove = (e) => handleDragMove(e)
+    const handleMouseUp = () => handleDragEnd()
+    const handleTouchMove = (e) => handleDragMove(e)
+    const handleTouchEnd = () => handleDragEnd()
 
-    const isCorrect = selectedPiece.correctIndex === slotIndex
-
-    if (isCorrect) {
-      // 正解
-      const newPlacedPieces = [...placedPieces, { ...selectedPiece, isPlaced: true }]
-      setPlacedPieces(newPlacedPieces)
-
-      setPieces(prev => prev.map(p =>
-        p.id === selectedPiece.id ? { ...p, isPlaced: true } : p
-      ))
-
-      setScore(prev => prev + 100)
-      setSelectedPiece(null)
-
-      // 全て完成したか
-      if (newPlacedPieces.length === puzzle.pieces) {
-        handleComplete()
-      }
-    } else {
-      // 不正解
-      setScore(prev => Math.max(0, prev - 10))
-
-      // 振動フィードバック
-      if (navigator.vibrate) {
-        navigator.vibrate(100)
-      }
+    if (dragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      window.addEventListener('touchmove', handleTouchMove, { passive: false })
+      window.addEventListener('touchend', handleTouchEnd)
     }
-  }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [dragging, handleDragMove, handleDragEnd])
 
   const handleComplete = () => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -365,8 +506,107 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const availablePieces = pieces.filter(p => !p.isPlaced)
-  const progress = (placedPieces.length / puzzle.pieces) * 100
+  // 完成したグループ数を計算
+  const uniqueGroups = new Set(pieces.map(p => p.groupId))
+  const connectedPieces = puzzle.pieces - uniqueGroups.size
+  const progress = (connectedPieces / (puzzle.pieces - 1)) * 100
+
+  // ピースをグループごとにレンダリング
+  const renderPieceGroups = () => {
+    // グループごとにピースをまとめる
+    const groups = {}
+    pieces.forEach(piece => {
+      if (!groups[piece.groupId]) {
+        groups[piece.groupId] = []
+      }
+      groups[piece.groupId].push(piece)
+    })
+
+    return Object.entries(groups).map(([groupId, groupPieces]) => {
+      const isGlowing = glowingGroup === parseInt(groupId)
+      const isDraggingGroup = dragging?.groupId === parseInt(groupId)
+      const zIndex = Math.max(...groupPieces.map(p => p.zIndex))
+
+      return (
+        <g
+          key={groupId}
+          className={`piece-group ${isGlowing ? 'glowing' : ''} ${isDraggingGroup ? 'dragging' : ''}`}
+          style={{ zIndex }}
+        >
+          {groupPieces.map(piece => {
+            const path = createPiecePath(piece.shape, PIECE_SIZE, PIECE_SIZE)
+
+            // ヒットエリアを広げるためのパディング
+            const hitPadding = 10
+
+            return (
+              <g
+                key={piece.id}
+                transform={`translate(${piece.x}, ${piece.y})`}
+                onMouseDown={(e) => handleDragStart(e, piece)}
+                onTouchStart={(e) => handleDragStart(e, piece)}
+                style={{ cursor: isDraggingGroup ? 'grabbing' : 'grab' }}
+              >
+                <defs>
+                  <clipPath id={`clip-${piece.id}`}>
+                    <path d={path} />
+                  </clipPath>
+                  {isGlowing && (
+                    <filter id={`glow-${piece.id}`}>
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  )}
+                </defs>
+
+                {/* 透明なヒットエリア（クリックしやすくする） */}
+                <rect
+                  x={-hitPadding}
+                  y={-hitPadding}
+                  width={PIECE_SIZE + hitPadding * 2}
+                  height={PIECE_SIZE + hitPadding * 2}
+                  fill="transparent"
+                  style={{ cursor: isDraggingGroup ? 'grabbing' : 'grab' }}
+                />
+
+                {/* 光るエフェクト用の背景 */}
+                {isGlowing && (
+                  <path
+                    d={path}
+                    fill="rgba(255, 255, 255, 0.6)"
+                    filter={`url(#glow-${piece.id})`}
+                    className="glow-effect"
+                  />
+                )}
+
+                {/* ピース本体 */}
+                <image
+                  href={puzzle.image}
+                  x={-piece.col * PIECE_SIZE}
+                  y={-piece.row * PIECE_SIZE}
+                  width={gridSize * PIECE_SIZE}
+                  height={gridSize * PIECE_SIZE}
+                  clipPath={`url(#clip-${piece.id})`}
+                  style={{ pointerEvents: 'none' }}
+                />
+
+                {/* ピースの境界線 */}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke={isGlowing ? "rgba(255, 255, 255, 0.8)" : "#333"}
+                  strokeWidth={isGlowing ? "2" : "1"}
+                />
+              </g>
+            )
+          })}
+        </g>
+      )
+    })
+  }
 
   return (
     <div className="puzzle-game-screen">
@@ -392,175 +632,39 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }}></div>
         </div>
-        <div className="progress-text">{placedPieces.length}/{puzzle.pieces}</div>
+        <div className="progress-text">{connectedPieces}/{puzzle.pieces - 1}</div>
       </div>
 
       {/* Game Area */}
-      <div className="game-content">
-        {/* Puzzle Board */}
-        <div className="puzzle-board-container" style={{ position: 'relative' }}>
-          <svg
-            className="puzzle-board-svg"
-            viewBox={`0 0 ${gridSize * 100} ${gridSize * 100}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {/* 背景グリッド */}
-            <defs>
-              <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                <rect width="100" height="100" fill="none" stroke="#1a1a1a" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width={gridSize * 100} height={gridSize * 100} fill="url(#grid)" />
-
-            {/* 配置済みピース */}
-            {placedPieces.map((piece) => {
-              const x = piece.col * 100
-              const y = piece.row * 100
-              const path = createPiecePath(piece.shape, 100, 100)
-
-              return (
-                <g key={piece.id} transform={`translate(${x}, ${y})`}>
-                  <defs>
-                    <clipPath id={`clip-${piece.id}`}>
-                      <path d={path} />
-                    </clipPath>
-                  </defs>
-                  <image
-                    href={puzzle.image}
-                    x={-piece.col * 100}
-                    y={-piece.row * 100}
-                    width={gridSize * 100}
-                    height={gridSize * 100}
-                    clipPath={`url(#clip-${piece.id})`}
-                  />
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke="#000"
-                    strokeWidth="1"
-                    opacity="0.3"
-                  />
-                </g>
-              )
-            })}
-
-            {/* 空スロット */}
-            {Array.from({ length: puzzle.pieces }).map((_, index) => {
-              const isPlaced = placedPieces.some(p => p.correctIndex === index)
-              if (isPlaced) return null
-
-              const row = Math.floor(index / gridSize)
-              const col = index % gridSize
-              const x = col * 100
-              const y = row * 100
-              const isDropTarget = dropTarget === index
-              const isHinted = selectedPiece?.correctIndex === index || draggedPiece?.correctIndex === index
-
-              return (
-                <rect
-                  key={`slot-${index}`}
-                  x={x}
-                  y={y}
-                  width="100"
-                  height="100"
-                  fill={isDropTarget ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)"}
-                  stroke={isHinted ? "#ffffff" : "#333"}
-                  strokeWidth={isHinted ? "2" : "1"}
-                  className="puzzle-slot"
-                  onClick={() => handleSlotClick(index)}
-                  style={{ cursor: 'pointer' }}
-                />
-              )
-            })}
-          </svg>
-
-          {/* ドロップゾーン（透明オーバーレイ） */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'grid',
-              gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-              gridTemplateRows: `repeat(${gridSize}, 1fr)`,
-              pointerEvents: draggedPiece ? 'auto' : 'none'
-            }}
-          >
-            {Array.from({ length: puzzle.pieces }).map((_, index) => {
-              const isPlaced = placedPieces.some(p => p.correctIndex === index)
-
-              return (
-                <div
-                  key={`drop-zone-${index}`}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
-                  style={{
-                    pointerEvents: isPlaced ? 'none' : 'auto',
-                    cursor: draggedPiece ? 'pointer' : 'default'
-                  }}
-                />
-              )
-            })}
-          </div>
+      <div className="game-content free-placement" ref={containerRef}>
+        {/* Reference Image */}
+        <div className="reference-container">
+          <div className="reference-label">REFERENCE</div>
+          <img src={puzzle.image} alt="Reference" className="reference-image" />
         </div>
 
-        {/* Pieces Palette */}
-        <div className="pieces-palette">
-          <div className="palette-title">
-            <span className="title-line"></span>
-            PIECES ({availablePieces.length})
-            <span className="title-line"></span>
-          </div>
-          <div className="pieces-container">
-            {availablePieces.map((piece) => {
-              const path = createPiecePath(piece.shape, 100, 100)
-              const isDragging = draggedPiece?.id === piece.id
+        {/* Free Placement Board */}
+        <div className="free-board-container" ref={boardRef}>
+          <svg
+            className="free-board-svg"
+            viewBox={`0 0 ${gridSize * PIECE_SIZE} ${gridSize * PIECE_SIZE + 140}`}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* 完成位置のガイド（薄いグリッド） */}
+            <rect
+              x="0"
+              y="0"
+              width={gridSize * PIECE_SIZE}
+              height={gridSize * PIECE_SIZE}
+              fill="rgba(255,255,255,0.02)"
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
 
-              return (
-                <div
-                  key={piece.id}
-                  className={`piece-wrapper ${selectedPiece?.id === piece.id ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
-                  onClick={() => handlePieceClick(piece)}
-                  draggable={!piece.isPlaced}
-                  onDragStart={(e) => handleDragStart(e, piece)}
-                  onDragEnd={handleDragEnd}
-                  style={{
-                    opacity: isDragging ? 0.5 : 1,
-                    cursor: isDragging ? 'grabbing' : 'grab'
-                  }}
-                >
-                  <svg
-                    className="piece-svg"
-                    viewBox="-25 -25 150 150"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    <defs>
-                      <clipPath id={`piece-clip-${piece.id}`}>
-                        <path d={path} />
-                      </clipPath>
-                    </defs>
-                    <image
-                      href={puzzle.image}
-                      x={-piece.col * 100}
-                      y={-piece.row * 100}
-                      width={gridSize * 100}
-                      height={gridSize * 100}
-                      clipPath={`url(#piece-clip-${piece.id})`}
-                    />
-                    <path
-                      d={path}
-                      fill="none"
-                      stroke="#666"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </div>
-              )
-            })}
-          </div>
+            {/* ピースをレンダリング */}
+            {renderPieceGroups()}
+          </svg>
         </div>
       </div>
     </div>
