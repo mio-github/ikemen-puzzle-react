@@ -192,17 +192,10 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
       const col = i % gridSize
 
       // チュートリアル用の初期配置
-      // 上段3つは正しい位置に近い場所、下段は散らばす
+      // 最後の3ピース（下段）以外は自動配置するので、全て散らばす
       let randomX, randomY
-      if (row === 0) {
-        // 上段：正しい位置に近く配置（ガイドとして）
-        randomX = col * PIECE_SIZE + (Math.random() - 0.5) * 20
-        randomY = row * PIECE_SIZE + (Math.random() - 0.5) * 20
-      } else {
-        // 中段・下段：ボード下部に散らばす
-        randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
-        randomY = Math.round(boardHeight + 30 + Math.random() * 80)
-      }
+      randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
+      randomY = Math.round(boardHeight + 30 + Math.random() * 80)
 
       newPieces.push({
         id: i,
@@ -233,12 +226,12 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
     }, 1000)
   }
 
-  // 半自動プレイ：最初の4ピース（半分）を自動配置
+  // 半自動プレイ：最初の6ピース（上段・中段）を自動配置、最後の3ピースはユーザー
   useEffect(() => {
-    if (step !== 'playing' || autoPlayStep >= 4) return
+    if (step !== 'playing' || autoPlayStep >= 6) return
 
     const autoPlaceTimeout = setTimeout(() => {
-      // 自動配置するピースを決定（ID順で最初の4つ）
+      // 自動配置するピースを決定（ID順で最初の6つ）
       const pieceToPlace = pieces.find(p => p.id === autoPlayStep)
       if (!pieceToPlace) return
 
@@ -309,9 +302,9 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
     return () => clearTimeout(autoPlaceTimeout)
   }, [step, autoPlayStep, pieces])
 
-  // 4ピース配置後、ユーザーに操作させる
+  // 6ピース配置後、ユーザーに操作させる（最後の3ピース）
   useEffect(() => {
-    if (autoPlayStep === 4 && showTip === 'watch') {
+    if (autoPlayStep === 6 && showTip === 'watch') {
       setShowTip('your-turn')
     }
   }, [autoPlayStep, showTip])
@@ -355,7 +348,7 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
   }, [gridSize])
 
   const handleDragStart = (e, piece) => {
-    if (autoPlayStep < 4) return // 自動プレイ中はドラッグ不可
+    if (autoPlayStep < 6) return // 自動プレイ中はドラッグ不可
     e.preventDefault()
 
     const pos = getEventPosition(e)
@@ -576,7 +569,7 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
           {groupPieces.map(piece => {
             const path = createPiecePath(piece.row, piece.col, puzzleEdges)
             const hitPadding = 10
-            const canDrag = autoPlayStep >= 4
+            const canDrag = autoPlayStep >= 6
 
             return (
               <g

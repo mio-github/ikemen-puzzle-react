@@ -326,4 +326,5 @@ const createEdgePath = (edgeData, pieceSize, tabSize, direction) => {
 
 - [Draradech/jigsaw - GitHub](https://github.com/Draradech/jigsaw)
 - [Jigsaw Puzzle Generator - Live Demo](https://draradech.github.io/jigsaw/jigsaw.html)
+- [Jigsaw Puzzle Generator - Gist Raw](https://gists.rawgit.com/Draradech/35d36347312ca6d0887aa7d55f366e30/raw/b04cf9cd63a59571910cb226226ce2b3ed46af46/jigsaw.html)
 - [mono.jpn.com - ジグソーパズルジェネレーター紹介](https://mono.jpn.com/2020/05/29/7805/)
