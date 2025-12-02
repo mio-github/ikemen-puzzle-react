@@ -1,0 +1,753 @@
+/* Tutorial Screen Base */
+.tutorial-screen {
+  min-height: 100vh;
+  background: #000000;
+  color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ============================================
+   INTRO SCREEN
+   ============================================ */
+.tutorial-intro {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: linear-gradient(180deg, #0a0a0a 0%, #000000 50%, #0a0a0a 100%);
+}
+
+.tutorial-content {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+
+.tutorial-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 48px;
+  animation: logoFadeIn 0.8s ease;
+}
+
+@keyframes logoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tutorial-logo .logo-icon {
+  font-size: 56px;
+  font-weight: 100;
+  color: #ffffff;
+}
+
+.tutorial-logo .logo-text {
+  text-align: left;
+}
+
+.tutorial-logo .logo-main {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.tutorial-logo .logo-sub {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 6px;
+  color: #888;
+}
+
+.tutorial-card {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #333;
+  border-radius: 20px;
+  padding: 32px 24px;
+  margin-bottom: 32px;
+  animation: cardSlideUp 0.6s ease 0.2s both;
+}
+
+@keyframes cardSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tutorial-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #ffffff;
+  margin: 0 0 24px;
+  text-transform: uppercase;
+}
+
+.tutorial-description {
+  text-align: center;
+  line-height: 1.8;
+}
+
+.tutorial-description p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #aaa;
+}
+
+.tutorial-description p:last-child {
+  margin-bottom: 0;
+}
+
+.tutorial-description strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.tutorial-btn {
+  padding: 18px 40px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: btnFadeIn 0.6s ease 0.4s both;
+}
+
+@keyframes btnFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tutorial-btn.primary {
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  border: none;
+  color: #000000;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.25);
+}
+
+.tutorial-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.35);
+}
+
+.tutorial-btn.primary:active {
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   PLAYING SCREEN
+   ============================================ */
+.tutorial-game {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.tutorial-game .game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 24px 16px;
+  background: linear-gradient(180deg, #0a0a0a 0%, transparent 100%);
+  flex-shrink: 0;
+}
+
+.tutorial-game .header-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #ffffff;
+}
+
+.tutorial-game .game-info {
+  display: flex;
+  gap: 16px;
+}
+
+.tutorial-game .game-stat {
+  text-align: right;
+}
+
+.tutorial-game .stat-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.tutorial-game .stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* Tutorial Tip */
+.tutorial-tip {
+  padding: 0 24px;
+  margin-bottom: 12px;
+  animation: tipSlideIn 0.4s ease;
+}
+
+@keyframes tipSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tip-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.tip-content.highlight {
+  background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+  border-color: #555;
+  animation: tipPulse 1.5s ease infinite;
+}
+
+@keyframes tipPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px 2px rgba(255, 255, 255, 0.15);
+  }
+}
+
+.tip-icon {
+  font-size: 18px;
+}
+
+.tip-text {
+  font-weight: 500;
+}
+
+/* Progress */
+.tutorial-game .progress-container {
+  padding: 0 24px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.tutorial-game .progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #222;
+}
+
+.tutorial-game .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffffff 0%, #999 100%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-game .progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Game Content */
+.tutorial-game .game-content {
+  flex: 1;
+  padding: 0 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.tutorial-game .reference-container {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.tutorial-game .reference-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.tutorial-game .reference-image {
+  width: 100%;
+  max-height: 100px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+.tutorial-game .free-board-container {
+  flex: 1;
+  background: #0a0a0a;
+  border: 2px solid #222;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.tutorial-game .free-board-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Piece Styles (copied from PuzzleGame for consistency) */
+.tutorial-game .piece-group {
+  transition: filter 0.3s ease;
+}
+
+.tutorial-game .piece-group.dragging {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
+.tutorial-game .piece-group.glowing {
+  animation: groupGlow 0.6s ease-out;
+}
+
+@keyframes groupGlow {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+  30% {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.9))
+            drop-shadow(0 0 40px rgba(255, 255, 255, 0.6))
+            drop-shadow(0 0 60px rgba(255, 255, 255, 0.3));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+}
+
+.tutorial-game .glow-effect {
+  animation: glowPulse 0.6s ease-out;
+}
+
+@keyframes glowPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   COMPLETE SCREEN
+   ============================================ */
+.tutorial-complete {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.95);
+  animation: overlayFadeIn 0.4s ease;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tutorial-complete .complete-modal {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  border: 2px solid #333;
+  border-radius: 24px;
+  padding: 32px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  animation: modalSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tutorial-complete .complete-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: iconBounce 0.6s ease 0.3s both;
+}
+
+@keyframes iconBounce {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.tutorial-complete .complete-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 2px;
+  margin: 0 0 20px;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.tutorial-complete .complete-image {
+  width: 100%;
+  max-width: 180px;
+  margin: 0 auto 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #333;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.tutorial-complete .complete-image img {
+  width: 100%;
+  display: block;
+}
+
+.tutorial-complete .complete-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.tutorial-complete .complete-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tutorial-complete .complete-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #666;
+}
+
+.tutorial-complete .complete-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tutorial-complete .complete-points {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border: 1px solid #444;
+  border-radius: 16px;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  animation: pointsPulse 1s ease infinite alternate;
+}
+
+@keyframes pointsPulse {
+  from {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  }
+}
+
+.tutorial-complete .points-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.tutorial-complete .points-value {
+  display: block;
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+.tutorial-complete .complete-btn,
+.tutorial-prize .complete-btn {
+  width: 100%;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+}
+
+.tutorial-complete .complete-btn:hover,
+.tutorial-prize .complete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   PRIZE SCREEN
+   ============================================ */
+.tutorial-prize {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.95);
+  animation: overlayFadeIn 0.4s ease;
+}
+
+.tutorial-prize .prize-modal {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  border: 2px solid #333;
+  border-radius: 24px;
+  padding: 32px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  animation: modalSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-prize .prize-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.tutorial-prize .prize-card {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.tutorial-prize .prize-image-placeholder {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 12px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.tutorial-prize .prize-info {
+  margin-bottom: 16px;
+}
+
+.tutorial-prize .prize-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.tutorial-prize .prize-cost {
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.tutorial-prize .prize-details {
+  font-size: 12px;
+  color: #666;
+}
+
+.tutorial-prize .prize-balance {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.tutorial-prize .balance-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.tutorial-prize .balance-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tutorial-prize .prize-apply-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tutorial-prize .prize-apply-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.25);
+}
+
+/* Prize Success */
+.tutorial-prize .prize-success-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 800;
+  color: #000000;
+  margin: 0 auto 20px;
+  animation: iconBounce 0.6s ease both;
+}
+
+.tutorial-prize .prize-success-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 12px;
+}
+
+.tutorial-prize .prize-success-message {
+  font-size: 14px;
+  color: #888;
+  margin: 0 0 24px;
+}
+
+.tutorial-prize .tutorial-complete-message {
+  background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.tutorial-prize .tutorial-complete-message p {
+  margin: 0;
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.8;
+}
+
+.tutorial-prize .tutorial-complete-message p:first-child {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 360px) {
+  .tutorial-card {
+    padding: 24px 16px;
+  }
+
+  .tutorial-description p {
+    font-size: 13px;
+  }
+
+  .tutorial-btn {
+    padding: 16px 32px;
+    font-size: 13px;
+  }
+}
+
+@media (min-height: 800px) {
+  .tutorial-game .reference-image {
+    max-height: 120px;
+  }
+}

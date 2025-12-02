@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Home from './components/Home'
 import PuzzleList from './components/PuzzleList'
 import PuzzleGame from './components/PuzzleGame'
 import Collection from './components/Collection'
 import Prizes from './components/Prizes'
 import Navigation from './components/Navigation'
+import Tutorial from './components/Tutorial'
 import './App.css'
 
 // パズルデータ
@@ -261,6 +262,48 @@ function App() {
   const [darkModeUnlocked, setDarkModeUnlocked] = useState(false) // ダークモード購入状態
   const [showDarkModeModal, setShowDarkModeModal] = useState(false) // 購入モーダル表示
   const [requestCounts, setRequestCounts] = useState({}) // パズルごとの熱望カウント
+  const [notification, setNotification] = useState(null) // 通知ダイアログ
+  const [showTutorial, setShowTutorial] = useState(false) // チュートリアル表示状態
+  const [tutorialCompleted, setTutorialCompleted] = useState(false) // チュートリアル完了状態
+
+  // 初回起動時にチュートリアルを表示
+  useEffect(() => {
+    const tutorialDone = localStorage.getItem('ikemen-puzzle-tutorial-completed')
+    if (tutorialDone) {
+      setTutorialCompleted(true)
+    } else {
+      setShowTutorial(true)
+    }
+  }, [])
+
+  // チュートリアル完了時の処理
+  const handleTutorialComplete = (points) => {
+    setUserPoints(prev => prev + points)
+    setShowTutorial(false)
+    setTutorialCompleted(true)
+    localStorage.setItem('ikemen-puzzle-tutorial-completed', 'true')
+    showNotification('WELCOME!', 'チュートリアル完了！パズルを楽しもう！', 'success')
+  }
+
+  // チュートリアルをリセット（デバッグ・設定用）
+  const resetTutorial = () => {
+    localStorage.removeItem('ikemen-puzzle-tutorial-completed')
+    setTutorialCompleted(false)
+    setShowTutorial(true)
+  }
+
+  // チュートリアル用のパズル（一番簡単なもの）
+  const tutorialPuzzle = puzzles.find(p => p.pieces === 9 && p.cost === 0) || puzzles[4]
+
+  // 通知を表示
+  const showNotification = (title, message, type = 'info') => {
+    setNotification({ title, message, type })
+  }
+
+  // 通知を閉じる
+  const closeNotification = () => {
+    setNotification(null)
+  }
 
   const navigateTo = (screen) => {
     setCurrentScreen(screen)
@@ -298,10 +341,9 @@ function App() {
       setDarkModeUnlocked(true)
       setDarkMode(true)
       setShowDarkModeModal(false)
-      alert('🌙 ダークモードを解放しました！\nプレミアムパズルをお楽しみください。')
+      showNotification('DARK MODE UNLOCKED', 'プレミアムパズルをお楽しみください。', 'success')
     } else {
-      alert(`☺︎コインが不足しています。\n必要: ${DARK_MODE_COST}☺\n所持: ${premiumCoins}☺\n\n課金画面へ移動しますか？`)
-      // 実装時は課金画面へ遷移
+      showNotification('INSUFFICIENT COINS', `コインが不足しています。\n必要: ${DARK_MODE_COST}☺\n所持: ${premiumCoins}☺`, 'error')
     }
   }
 
@@ -314,9 +356,9 @@ function App() {
         ...prev,
         [puzzleId]: (prev[puzzleId] || 0) + 1
       }))
-      alert('🔥 続きを熱望！を送信しました！\n絵師さんに届けます。')
+      showNotification('REQUEST SENT', '続きを熱望！を送信しました。\n絵師さんに届けます。', 'success')
     } else {
-      alert(`ポイントが不足しています。\n必要: ${REQUEST_COST}pt\n所持: ${userPoints}pt`)
+      showNotification('INSUFFICIENT POINTS', `ポイントが不足しています。\n必要: ${REQUEST_COST}pt\n所持: ${userPoints}pt`, 'error')
     }
   }
 
@@ -366,6 +408,20 @@ function App() {
     }
   }
 
+  // チュートリアル中は他の画面を表示しない
+  if (showTutorial) {
+    return (
+      <div className="app">
+        <div className="phone-frame">
+          <Tutorial
+            onComplete={handleTutorialComplete}
+            tutorialPuzzle={tutorialPuzzle}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
       <div className={`phone-frame ${darkMode ? 'dark-mode' : ''}`}>
@@ -382,20 +438,20 @@ function App() {
           <div className="modal-overlay" onClick={() => setShowDarkModeModal(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h2>🌙 DARK MODE UNLOCK</h2>
-                <button className="modal-close" onClick={() => setShowDarkModeModal(false)}>✕</button>
+                <h2>DARK MODE UNLOCK</h2>
+                <button className="modal-close" onClick={() => setShowDarkModeModal(false)}>×</button>
               </div>
               <div className="modal-body">
                 <p className="modal-subtitle">プレミアムなイケメンパズルを解放！</p>
                 <ul className="modal-features">
-                  <li>✓ 10〜15種類の限定パズル</li>
-                  <li>✓ 買い切り・永久使用可能</li>
-                  <li>✓ いつでも通常モード切替</li>
+                  <li>+ 10〜15種類の限定パズル</li>
+                  <li>+ 買い切り・永久使用可能</li>
+                  <li>+ いつでも通常モード切替</li>
                 </ul>
                 <div className="modal-cost">
                   <div className="cost-label">必要コスト</div>
-                  <div className="cost-value">200 ☺︎コイン</div>
-                  <div className="cost-balance">所持: {premiumCoins} ☺︎</div>
+                  <div className="cost-value">200 COIN</div>
+                  <div className="cost-balance">所持: {premiumCoins}</div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -406,6 +462,22 @@ function App() {
                   あとで
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 通知ダイアログ */}
+        {notification && (
+          <div className="notification-overlay" onClick={closeNotification}>
+            <div className={`notification-dialog ${notification.type}`} onClick={(e) => e.stopPropagation()}>
+              <div className="notification-icon">
+                {notification.type === 'success' ? '★' : notification.type === 'error' ? '!' : '●'}
+              </div>
+              <h3 className="notification-title">{notification.title}</h3>
+              <p className="notification-message">{notification.message}</p>
+              <button className="notification-btn" onClick={closeNotification}>
+                OK
+              </button>
             </div>
           </div>
         )}
