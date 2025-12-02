@@ -5,6 +5,7 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
   const [step, setStep] = useState('intro') // intro, playing, complete, prize
   const [pieces, setPieces] = useState([])
   const [autoPlayStep, setAutoPlayStep] = useState(0)
+  const [autoPlayOrder, setAutoPlayOrder] = useState([]) // ランダムな配置順序
   const [showTip, setShowTip] = useState(null)
   const [dragging, setDragging] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -191,11 +192,9 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
       const row = Math.floor(i / gridSize)
       const col = i % gridSize
 
-      // チュートリアル用の初期配置
-      // 最後の3ピース（下段）以外は自動配置するので、全て散らばす
-      let randomX, randomY
-      randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
-      randomY = Math.round(boardHeight + 30 + Math.random() * 80)
+      // チュートリアル用の初期配置：全て散らばす
+      const randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
+      const randomY = Math.round(boardHeight + 30 + Math.random() * 80)
 
       newPieces.push({
         id: i,
@@ -209,6 +208,15 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
     }
 
     setPieces(newPieces)
+
+    // 自動配置する6ピースの順序をランダムに決定
+    const autoPlaceIds = [0, 1, 2, 3, 4, 5, 6, 7, 8].slice(0, 6)
+    // シャッフル
+    for (let i = autoPlaceIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [autoPlaceIds[i], autoPlaceIds[j]] = [autoPlaceIds[j], autoPlaceIds[i]]
+    }
+    setAutoPlayOrder(autoPlaceIds)
   }, [generatePuzzleEdges])
 
   // ゲーム開始
@@ -226,13 +234,53 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
     }, 1000)
   }
 
-  // 半自動プレイ：最初の6ピース（上段・中段）を自動配置、最後の3ピースはユーザー
+  // 隣接ピースを見つけてマージする
+  const mergeWithNeighbors = useCallback((placedPiece, allPieces) => {
+    let updatedPieces = [...allPieces]
+    const targetGroupId = placedPiece.groupId
+
+    // 4方向の隣接ピースをチェック
+    const neighbors = [
+      { row: placedPiece.row - 1, col: placedPiece.col }, // 上
+      { row: placedPiece.row + 1, col: placedPiece.col }, // 下
+      { row: placedPiece.row, col: placedPiece.col - 1 }, // 左
+      { row: placedPiece.row, col: placedPiece.col + 1 }, // 右
+    ]
+
+    for (const neighbor of neighbors) {
+      const neighborPiece = updatedPieces.find(
+        p => p.row === neighbor.row && p.col === neighbor.col
+      )
+      if (!neighborPiece) continue
+
+      // 隣接ピースが正しい位置にいるかチェック
+      const expectedX = neighborPiece.col * PIECE_SIZE
+      const expectedY = neighborPiece.row * PIECE_SIZE
+      const isInPlace = Math.abs(neighborPiece.x - expectedX) < 5 && Math.abs(neighborPiece.y - expectedY) < 5
+
+      if (isInPlace && neighborPiece.groupId !== targetGroupId) {
+        // 隣接ピースのグループを統合
+        const oldGroupId = neighborPiece.groupId
+        updatedPieces = updatedPieces.map(p => {
+          if (p.groupId === oldGroupId) {
+            return { ...p, groupId: targetGroupId }
+          }
+          return p
+        })
+      }
+    }
+
+    return updatedPieces
+  }, [PIECE_SIZE])
+
+  // 半自動プレイ：最初の6ピースを自動配置（ランダム順序）、最後の3ピースはユーザー
   useEffect(() => {
-    if (step !== 'playing' || autoPlayStep >= 6) return
+    if (step !== 'playing' || autoPlayStep >= 6 || autoPlayOrder.length === 0) return
 
     const autoPlaceTimeout = setTimeout(() => {
-      // 自動配置するピースを決定（ID順で最初の6つ）
-      const pieceToPlace = pieces.find(p => p.id === autoPlayStep)
+      // ランダム順序で配置するピースを取得
+      const pieceId = autoPlayOrder[autoPlayStep]
+      const pieceToPlace = pieces.find(p => p.id === pieceId)
       if (!pieceToPlace) return
 
       // ヒントを更新
@@ -269,20 +317,17 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
         if (progress < 1) {
           requestAnimationFrame(animate)
         } else {
-          // アニメーション完了
+          // アニメーション完了：正確な位置に配置して隣接ピースとマージ
           setPieces(prev => {
-            // 同じ行のピースをマージ
-            const updatedPieces = prev.map(p => {
-              if (p.row === pieceToPlace.row && p.col < pieceToPlace.col) {
-                // 同じ行の左側ピースと同じグループにする
-                const leftPiece = prev.find(lp => lp.row === pieceToPlace.row && lp.col === pieceToPlace.col - 1)
-                if (leftPiece && leftPiece.groupId !== pieceToPlace.groupId) {
-                  return { ...p, groupId: Math.min(p.groupId, pieceToPlace.groupId) }
-                }
-              }
-              return p
-            })
-            return updatedPieces
+            // まず正確な位置に配置
+            let updated = prev.map(p =>
+              p.id === pieceToPlace.id ? { ...p, x: targetX, y: targetY } : p
+            )
+            // 配置したピースを取得
+            const placedPiece = updated.find(p => p.id === pieceToPlace.id)
+            // 隣接ピースとマージ
+            updated = mergeWithNeighbors(placedPiece, updated)
+            return updated
           })
 
           setScore(prev => prev + 50)
@@ -297,10 +342,10 @@ const Tutorial = ({ onComplete, tutorialPuzzle }) => {
       setTimeout(() => {
         animate()
       }, 500)
-    }, autoPlayStep === 0 ? 2000 : 1500)
+    }, autoPlayStep === 0 ? 2000 : 1200)
 
     return () => clearTimeout(autoPlaceTimeout)
-  }, [step, autoPlayStep, pieces])
+  }, [step, autoPlayStep, autoPlayOrder, pieces, mergeWithNeighbors])
 
   // 6ピース配置後、ユーザーに操作させる（最後の3ピース）
   useEffect(() => {
