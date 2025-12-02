@@ -34,162 +34,165 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
   const TAB_SIZE = 0.1    // タブサイズ 20% → 20/200 = 0.1
   const JITTER = 0.04     // ジッター 4% → 4/100 = 0.04
 
-  // ジグソーピースの形状データを生成（Draradechアルゴリズム準拠）
-  const generateJigsawShape = useCallback((row, col, gridSize, edgeData) => {
+  // パズル全体の分割線を事前生成（Draradechアルゴリズム準拠）
+  // これにより隣接ピースで同一の曲線を共有
+  const generatePuzzleEdges = useCallback((gridSize) => {
     const t = TAB_SIZE
     const j = JITTER
+    const s = PIECE_SIZE // セグメント長
 
-    // 各エッジのフリップ状態とジッター値を保存
-    if (!edgeData.horizontal) edgeData.horizontal = {}
-    if (!edgeData.vertical) edgeData.vertical = {}
+    // シード付き乱数生成
+    let seed = puzzle.id
+    const random = () => {
+      const x = Math.sin(seed) * 10000
+      seed += 1
+      return x - Math.floor(x)
+    }
+    const uniform = () => random() * j * 2 - j
+    const rbool = () => random() > 0.5
 
-    // 一様乱数 [-j, j]
-    const uniform = (random) => random() * j * 2 - j
+    // 水平分割線（行間）: horizontalLines[row] = 各colの曲線ポイント配列
+    const horizontalLines = []
+    for (let row = 1; row < gridSize; row++) {
+      const line = []
+      let flip = rbool()
+      let e = uniform()
 
-    const getHorizontalEdge = (r, c) => {
-      const key = `h_${r}_${c}`
-      if (!edgeData.horizontal[key]) {
-        const random = createRandom(puzzle.id * 1000 + r * 100 + c)
-        edgeData.horizontal[key] = {
-          flip: random() > 0.5,
-          a: uniform(random),
-          b: uniform(random),
-          c: uniform(random),
-          d: uniform(random),
-          e: uniform(random)
-        }
+      for (let col = 0; col < gridSize; col++) {
+        const flipOld = flip
+        flip = rbool()
+        const a = (flip === flipOld) ? -e : e
+        const b = uniform()
+        const c = uniform()
+        const d = uniform()
+        e = uniform()
+
+        // 10個の制御点を計算（正規化座標 0-1）
+        const points = [
+          { l: 0.0, w: 0 },
+          { l: 0.2, w: a },
+          { l: 0.5 + b + d, w: -t + c },
+          { l: 0.5 - t + b, w: t + c },
+          { l: 0.5 - 2*t + b - d, w: 3*t + c },
+          { l: 0.5 + 2*t + b - d, w: 3*t + c },
+          { l: 0.5 + t + b, w: t + c },
+          { l: 0.5 + b + d, w: -t + c },
+          { l: 0.8, w: e },
+          { l: 1.0, w: 0 }
+        ]
+
+        // 実座標に変換（flip で符号反転）
+        const dir = flip ? -1 : 1
+        line.push(points.map(p => ({
+          x: col * s + p.l * s,
+          y: row * s + p.w * s * dir
+        })))
       }
-      return edgeData.horizontal[key]
+      horizontalLines.push(line)
     }
 
-    const getVerticalEdge = (r, c) => {
-      const key = `v_${r}_${c}`
-      if (!edgeData.vertical[key]) {
-        const random = createRandom(puzzle.id * 2000 + r * 100 + c)
-        edgeData.vertical[key] = {
-          flip: random() > 0.5,
-          a: uniform(random),
-          b: uniform(random),
-          c: uniform(random),
-          d: uniform(random),
-          e: uniform(random)
-        }
+    // 垂直分割線（列間）: verticalLines[col] = 各rowの曲線ポイント配列
+    const verticalLines = []
+    for (let col = 1; col < gridSize; col++) {
+      const line = []
+      let flip = rbool()
+      let e = uniform()
+
+      for (let row = 0; row < gridSize; row++) {
+        const flipOld = flip
+        flip = rbool()
+        const a = (flip === flipOld) ? -e : e
+        const b = uniform()
+        const c = uniform()
+        const d = uniform()
+        e = uniform()
+
+        const points = [
+          { l: 0.0, w: 0 },
+          { l: 0.2, w: a },
+          { l: 0.5 + b + d, w: -t + c },
+          { l: 0.5 - t + b, w: t + c },
+          { l: 0.5 - 2*t + b - d, w: 3*t + c },
+          { l: 0.5 + 2*t + b - d, w: 3*t + c },
+          { l: 0.5 + t + b, w: t + c },
+          { l: 0.5 + b + d, w: -t + c },
+          { l: 0.8, w: e },
+          { l: 1.0, w: 0 }
+        ]
+
+        const dir = flip ? -1 : 1
+        line.push(points.map(p => ({
+          x: col * s + p.w * s * dir,
+          y: row * s + p.l * s
+        })))
       }
-      return edgeData.vertical[key]
+      verticalLines.push(line)
     }
 
-    // エッジを反転（隣接ピースから見た場合）
-    const reverseEdge = (edge) => {
-      if (!edge) return null
-      return {
-        flip: !edge.flip, // タブ/ソケットを反転
-        a: edge.a,
-        b: edge.b,
-        c: edge.c,
-        d: edge.d,
-        e: edge.e
-      }
-    }
+    return { horizontalLines, verticalLines }
+  }, [puzzle.id, PIECE_SIZE])
 
-    return {
-      // 上辺：row行の水平エッジを反転して使用
-      top: row > 0 ? reverseEdge(getHorizontalEdge(row, col)) : null,
-      // 右辺：col+1列の垂直エッジをそのまま使用
-      right: col < gridSize - 1 ? getVerticalEdge(row, col + 1) : null,
-      // 下辺：row+1行の水平エッジをそのまま使用
-      bottom: row < gridSize - 1 ? getHorizontalEdge(row + 1, col) : null,
-      // 左辺：col列の垂直エッジを反転して使用
-      left: col > 0 ? reverseEdge(getVerticalEdge(row, col)) : null,
-      t,
-      j
-    }
-  }, [puzzle.id])
+  // 事前生成した分割線データ
+  const [puzzleEdges, setPuzzleEdges] = useState(null)
 
-  // SVGパスを生成（Draradechアルゴリズム - 10制御点方式）
-  // 参考: https://github.com/Draradech/jigsaw
-  const createPiecePath = (shape, pieceWidth, pieceHeight) => {
-    const { top, right, bottom, left, t } = shape
-    const w = pieceWidth
-    const h = pieceHeight
+  // ピース用のSVGパスを生成（分割線から切り出し）
+  const createPiecePath = useCallback((row, col, edges) => {
+    if (!edges) return `M 0 0 L ${PIECE_SIZE} 0 L ${PIECE_SIZE} ${PIECE_SIZE} L 0 ${PIECE_SIZE} Z`
 
-    // Draradechアルゴリズムの10制御点を計算
-    // p0→p3: 肩から首へ, p3→p6: 頭部分, p6→p9: 首から肩へ
-    const getDraradechPoints = (edge, segmentLen) => {
-      if (!edge) return null
+    const { horizontalLines, verticalLines } = edges
+    const s = PIECE_SIZE
 
-      const { flip, a, b, c, d, e } = edge
-      const s = segmentLen
-      const dir = flip ? -1 : 1
-
-      // 長さ方向の座標 (0→1の正規化座標をピクセルに変換)
-      const l = (v) => s * v
-
-      // 幅方向の座標 (flipで符号反転)
-      const wCoord = (v) => s * v * dir
-
-      return {
-        p0: { l: l(0.0), w: wCoord(0) },
-        p1: { l: l(0.2), w: wCoord(a) },
-        p2: { l: l(0.5 + b + d), w: wCoord(-t + c) },
-        p3: { l: l(0.5 - t + b), w: wCoord(t + c) },
-        p4: { l: l(0.5 - 2*t + b - d), w: wCoord(3*t + c) },
-        p5: { l: l(0.5 + 2*t + b - d), w: wCoord(3*t + c) },
-        p6: { l: l(0.5 + t + b), w: wCoord(t + c) },
-        p7: { l: l(0.5 + b + d), w: wCoord(-t + c) },
-        p8: { l: l(0.8), w: wCoord(e) },
-        p9: { l: l(1.0), w: wCoord(0) }
-      }
-    }
+    // ピースのローカル座標系での原点
+    const ox = col * s
+    const oy = row * s
 
     let path = `M 0 0`
 
-    // 上辺 (左から右へ、y=0がベースライン)
-    if (top) {
-      const pts = getDraradechPoints(top, w)
-      // l→x, w→y (上向きが負なのでそのまま)
-      path += ` C ${pts.p1.l} ${pts.p1.w}, ${pts.p2.l} ${pts.p2.w}, ${pts.p3.l} ${pts.p3.w}`
-      path += ` C ${pts.p4.l} ${pts.p4.w}, ${pts.p5.l} ${pts.p5.w}, ${pts.p6.l} ${pts.p6.w}`
-      path += ` C ${pts.p7.l} ${pts.p7.w}, ${pts.p8.l} ${pts.p8.w}, ${pts.p9.l} ${pts.p9.w}`
+    // 上辺 (左→右)
+    if (row > 0 && horizontalLines[row - 1] && horizontalLines[row - 1][col]) {
+      const pts = horizontalLines[row - 1][col]
+      // グローバル座標からローカル座標に変換
+      path += ` C ${pts[1].x - ox} ${pts[1].y - oy}, ${pts[2].x - ox} ${pts[2].y - oy}, ${pts[3].x - ox} ${pts[3].y - oy}`
+      path += ` C ${pts[4].x - ox} ${pts[4].y - oy}, ${pts[5].x - ox} ${pts[5].y - oy}, ${pts[6].x - ox} ${pts[6].y - oy}`
+      path += ` C ${pts[7].x - ox} ${pts[7].y - oy}, ${pts[8].x - ox} ${pts[8].y - oy}, ${pts[9].x - ox} ${pts[9].y - oy}`
     } else {
-      path += ` L ${w} 0`
+      path += ` L ${s} 0`
     }
 
-    // 右辺 (上から下へ、x=wがベースライン)
-    if (right) {
-      const pts = getDraradechPoints(right, h)
-      // l→y, w→x (右向きが正なのでwを加算)
-      path += ` C ${w + pts.p1.w} ${pts.p1.l}, ${w + pts.p2.w} ${pts.p2.l}, ${w + pts.p3.w} ${pts.p3.l}`
-      path += ` C ${w + pts.p4.w} ${pts.p4.l}, ${w + pts.p5.w} ${pts.p5.l}, ${w + pts.p6.w} ${pts.p6.l}`
-      path += ` C ${w + pts.p7.w} ${pts.p7.l}, ${w + pts.p8.w} ${pts.p8.l}, ${w + pts.p9.w} ${pts.p9.l}`
+    // 右辺 (上→下)
+    if (col < gridSize - 1 && verticalLines[col] && verticalLines[col][row]) {
+      const pts = verticalLines[col][row]
+      path += ` C ${pts[1].x - ox} ${pts[1].y - oy}, ${pts[2].x - ox} ${pts[2].y - oy}, ${pts[3].x - ox} ${pts[3].y - oy}`
+      path += ` C ${pts[4].x - ox} ${pts[4].y - oy}, ${pts[5].x - ox} ${pts[5].y - oy}, ${pts[6].x - ox} ${pts[6].y - oy}`
+      path += ` C ${pts[7].x - ox} ${pts[7].y - oy}, ${pts[8].x - ox} ${pts[8].y - oy}, ${pts[9].x - ox} ${pts[9].y - oy}`
     } else {
-      path += ` L ${w} ${h}`
+      path += ` L ${s} ${s}`
     }
 
-    // 下辺 (右から左へ、y=hがベースライン)
-    if (bottom) {
-      const pts = getDraradechPoints(bottom, w)
-      // 右から左なので、lを反転 (w - l)、wは下向きが正なので加算
-      path += ` C ${w - pts.p1.l} ${h + pts.p1.w}, ${w - pts.p2.l} ${h + pts.p2.w}, ${w - pts.p3.l} ${h + pts.p3.w}`
-      path += ` C ${w - pts.p4.l} ${h + pts.p4.w}, ${w - pts.p5.l} ${h + pts.p5.w}, ${w - pts.p6.l} ${h + pts.p6.w}`
-      path += ` C ${w - pts.p7.l} ${h + pts.p7.w}, ${w - pts.p8.l} ${h + pts.p8.w}, ${w - pts.p9.l} ${h + pts.p9.w}`
+    // 下辺 (右→左) - 逆順で描画
+    if (row < gridSize - 1 && horizontalLines[row] && horizontalLines[row][col]) {
+      const pts = horizontalLines[row][col]
+      // p9から逆順: p9→(p8,p7,p6)→(p5,p4,p3)→(p2,p1,p0)
+      path += ` C ${pts[8].x - ox} ${pts[8].y - oy}, ${pts[7].x - ox} ${pts[7].y - oy}, ${pts[6].x - ox} ${pts[6].y - oy}`
+      path += ` C ${pts[5].x - ox} ${pts[5].y - oy}, ${pts[4].x - ox} ${pts[4].y - oy}, ${pts[3].x - ox} ${pts[3].y - oy}`
+      path += ` C ${pts[2].x - ox} ${pts[2].y - oy}, ${pts[1].x - ox} ${pts[1].y - oy}, ${pts[0].x - ox} ${pts[0].y - oy}`
     } else {
-      path += ` L 0 ${h}`
+      path += ` L 0 ${s}`
     }
 
-    // 左辺 (下から上へ、x=0がベースライン)
-    if (left) {
-      const pts = getDraradechPoints(left, h)
-      // 下から上なのでlを反転 (h - l)、wは左向きが負なので減算
-      path += ` C ${-pts.p1.w} ${h - pts.p1.l}, ${-pts.p2.w} ${h - pts.p2.l}, ${-pts.p3.w} ${h - pts.p3.l}`
-      path += ` C ${-pts.p4.w} ${h - pts.p4.l}, ${-pts.p5.w} ${h - pts.p5.l}, ${-pts.p6.w} ${h - pts.p6.l}`
-      path += ` C ${-pts.p7.w} ${h - pts.p7.l}, ${-pts.p8.w} ${h - pts.p8.l}, ${-pts.p9.w} ${h - pts.p9.l}`
+    // 左辺 (下→上) - 逆順で描画
+    if (col > 0 && verticalLines[col - 1] && verticalLines[col - 1][row]) {
+      const pts = verticalLines[col - 1][row]
+      path += ` C ${pts[8].x - ox} ${pts[8].y - oy}, ${pts[7].x - ox} ${pts[7].y - oy}, ${pts[6].x - ox} ${pts[6].y - oy}`
+      path += ` C ${pts[5].x - ox} ${pts[5].y - oy}, ${pts[4].x - ox} ${pts[4].y - oy}, ${pts[3].x - ox} ${pts[3].y - oy}`
+      path += ` C ${pts[2].x - ox} ${pts[2].y - oy}, ${pts[1].x - ox} ${pts[1].y - oy}, ${pts[0].x - ox} ${pts[0].y - oy}`
     } else {
       path += ` L 0 0`
     }
 
     path += ` Z`
     return path
-  }
+  }, [gridSize, PIECE_SIZE])
 
   // 初期化
   useEffect(() => {
@@ -205,7 +208,10 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
   }, [])
 
   const initializePuzzle = () => {
-    const edgeData = { horizontal: {}, vertical: {} }
+    // パズル全体の分割線を事前生成（隣接ピースで曲線を共有するため）
+    const edges = generatePuzzleEdges(gridSize)
+    setPuzzleEdges(edges)
+
     const newPieces = []
 
     // ボードのサイズを取得（初期配置用）
@@ -215,7 +221,6 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
     for (let i = 0; i < puzzle.pieces; i++) {
       const row = Math.floor(i / gridSize)
       const col = i % gridSize
-      const shape = generateJigsawShape(row, col, gridSize, edgeData)
 
       // 初期位置をランダムに散らばらせる（ボード下部の領域に）
       const randomX = Math.round(Math.random() * (boardWidth - PIECE_SIZE * 0.5))
@@ -225,7 +230,6 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
         id: i,
         row,
         col,
-        shape,
         x: randomX,
         y: randomY,
         groupId: i, // 初期状態では各ピースが独立したグループ
@@ -298,10 +302,28 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
           merged = true
           const otherGroupId = otherPiece.groupId
 
-          // 移動するグループのピースを、現在のグループに正確にスナップ
-          // groupPieceの位置を基準に、otherPieceが正しい相対位置になるように計算
-          const targetX = groupPiece.x + correctRelPos.x
-          const targetY = groupPiece.y + correctRelPos.y
+          // まず、基準となるグループの座標を整数に丸める
+          const baseX = Math.round(groupPiece.x)
+          const baseY = Math.round(groupPiece.y)
+          const baseDeltaX = baseX - groupPiece.x
+          const baseDeltaY = baseY - groupPiece.y
+
+          // 基準グループの全ピースの座標を整数に調整
+          mergedPieces = mergedPieces.map(p => {
+            if (p.groupId === newGroupId) {
+              return {
+                ...p,
+                x: Math.round(p.x + baseDeltaX),
+                y: Math.round(p.y + baseDeltaY)
+              }
+            }
+            return p
+          })
+
+          // 移動するグループのピースを、正確な相対位置でスナップ
+          // 基準位置（整数）からの正確なオフセットを計算
+          const targetX = baseX + correctRelPos.x
+          const targetY = baseY + correctRelPos.y
           const offsetX = targetX - otherPiece.x
           const offsetY = targetY - otherPiece.y
 
@@ -310,7 +332,6 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
               return {
                 ...p,
                 groupId: newGroupId,
-                // 整数に丸めて隙間を防ぐ
                 x: Math.round(p.x + offsetX),
                 y: Math.round(p.y + offsetY)
               }
@@ -442,8 +463,23 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
       return
     }
 
+    // まず、ドラッグしたグループの座標を整数に丸める
+    let updatedPieces = pieces.map(p => {
+      if (p.groupId === dragging.groupId) {
+        return {
+          ...p,
+          x: Math.round(p.x),
+          y: Math.round(p.y)
+        }
+      }
+      return p
+    })
+
+    // 丸めた座標で再度ピースを取得
+    const roundedPiece = updatedPieces.find(p => p.id === dragging.pieceId)
+
     // マージ判定
-    const result = checkAndMerge(draggedPiece, pieces)
+    const result = checkAndMerge(roundedPiece, updatedPieces)
 
     if (result.merged) {
       setPieces(result.pieces)
@@ -460,6 +496,9 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
       if (groupIds.size === 1) {
         handleComplete()
       }
+    } else {
+      // マージされなかった場合も丸めた座標を適用
+      setPieces(updatedPieces)
     }
 
     setDragging(null)
@@ -534,7 +573,8 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
           style={{ zIndex }}
         >
           {groupPieces.map(piece => {
-            const path = createPiecePath(piece.shape, PIECE_SIZE, PIECE_SIZE)
+            // 事前生成した分割線からピースの形状パスを生成
+            const path = createPiecePath(piece.row, piece.col, puzzleEdges)
 
             // ヒットエリアを広げるためのパディング
             const hitPadding = 10
@@ -593,12 +633,12 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                   style={{ pointerEvents: 'none' }}
                 />
 
-                {/* ピースの境界線 */}
+                {/* ピースの境界線（内側に描画） */}
                 <path
                   d={path}
                   fill="none"
-                  stroke={isGlowing ? "rgba(255, 255, 255, 0.8)" : "#333"}
-                  strokeWidth={isGlowing ? "2" : "1"}
+                  stroke={isGlowing ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.3)"}
+                  strokeWidth={isGlowing ? "1.5" : "0.5"}
                 />
               </g>
             )
