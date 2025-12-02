@@ -8,6 +8,8 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
   const [glowingGroup, setGlowingGroup] = useState(null)
   const [dragging, setDragging] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [showComplete, setShowComplete] = useState(false)
+  const [completionData, setCompletionData] = useState(null)
   const timerRef = useRef(null)
   const boardRef = useRef(null)
   const containerRef = useRef(null)
@@ -534,9 +536,20 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
     const points = Math.floor(finalScore / 10)
 
     setTimeout(() => {
-      alert(`🎉 PUZZLE COMPLETE!\n\n⏱ Time: ${formatTime(timer)}\n🎯 Score: ${finalScore}\n\n+${points} POINTS`)
-      onComplete(points)
+      setCompletionData({
+        time: formatTime(timer),
+        finalScore,
+        timeBonus,
+        points
+      })
+      setShowComplete(true)
     }, 500)
+  }
+
+  const handleCompleteConfirm = () => {
+    if (completionData) {
+      onComplete(completionData.points)
+    }
   }
 
   const formatTime = (seconds) => {
@@ -591,6 +604,27 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                   <clipPath id={`clip-${piece.id}`}>
                     <path d={path} />
                   </clipPath>
+                  {/* ドロップシャドウフィルター */}
+                  <filter id={`shadow-${piece.id}`} x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="1.5" dy="2" stdDeviation="2" floodColor="rgba(0,0,0,0.5)" />
+                  </filter>
+                  {/* 内側のベベル効果用フィルター */}
+                  <filter id={`bevel-${piece.id}`} x="-10%" y="-10%" width="120%" height="120%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" result="blur"/>
+                    <feOffset in="blur" dx="-0.5" dy="-0.5" result="offsetLight"/>
+                    <feOffset in="blur" dx="0.5" dy="0.5" result="offsetDark"/>
+                    <feComposite in="offsetLight" in2="SourceAlpha" operator="in" result="lightEdge"/>
+                    <feComposite in="offsetDark" in2="SourceAlpha" operator="in" result="darkEdge"/>
+                    <feFlood floodColor="rgba(255,255,255,0.4)" result="lightColor"/>
+                    <feFlood floodColor="rgba(0,0,0,0.3)" result="darkColor"/>
+                    <feComposite in="lightColor" in2="lightEdge" operator="in" result="light"/>
+                    <feComposite in="darkColor" in2="darkEdge" operator="in" result="dark"/>
+                    <feMerge>
+                      <feMergeNode in="SourceGraphic"/>
+                      <feMergeNode in="light"/>
+                      <feMergeNode in="dark"/>
+                    </feMerge>
+                  </filter>
                   {isGlowing && (
                     <filter id={`glow-${piece.id}`}>
                       <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
@@ -612,6 +646,14 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                   style={{ cursor: isDraggingGroup ? 'grabbing' : 'grab' }}
                 />
 
+                {/* ドロップシャドウ（ピースの影） */}
+                <path
+                  d={path}
+                  fill="rgba(0, 0, 0, 0.4)"
+                  transform="translate(2, 3)"
+                  style={{ filter: 'blur(2px)' }}
+                />
+
                 {/* 光るエフェクト用の背景 */}
                 {isGlowing && (
                   <path
@@ -621,6 +663,12 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                     className="glow-effect"
                   />
                 )}
+
+                {/* ピースの背景（縁取り用） */}
+                <path
+                  d={path}
+                  fill="#1a1a1a"
+                />
 
                 {/* ピース本体 */}
                 <image
@@ -633,12 +681,42 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
                   style={{ pointerEvents: 'none' }}
                 />
 
-                {/* ピースの境界線（内側に描画） */}
+                {/* 内側のハイライト（上・左側） */}
                 <path
                   d={path}
                   fill="none"
-                  stroke={isGlowing ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.3)"}
-                  strokeWidth={isGlowing ? "1.5" : "0.5"}
+                  stroke="rgba(255, 255, 255, 0.25)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 0 100%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+
+                {/* 内側のシャドウ（下・右側） */}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke="rgba(0, 0, 0, 0.4)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+
+                {/* ピースの境界線 */}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke={isGlowing ? "rgba(255, 255, 255, 0.9)" : "rgba(60, 60, 60, 0.8)"}
+                  strokeWidth={isGlowing ? "1.5" : "0.8"}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               </g>
             )
@@ -707,6 +785,44 @@ const PuzzleGame = ({ puzzle, onComplete, onBack }) => {
           </svg>
         </div>
       </div>
+
+      {/* 完成ダイアログ */}
+      {showComplete && completionData && (
+        <div className="complete-overlay">
+          <div className="complete-modal">
+            <div className="complete-icon">★</div>
+            <h2 className="complete-title">PUZZLE COMPLETE!</h2>
+
+            <div className="complete-image">
+              <img src={puzzle.image} alt={puzzle.title} />
+            </div>
+
+            <div className="complete-stats">
+              <div className="complete-stat">
+                <span className="complete-stat-label">TIME</span>
+                <span className="complete-stat-value">{completionData.time}</span>
+              </div>
+              <div className="complete-stat">
+                <span className="complete-stat-label">SCORE</span>
+                <span className="complete-stat-value">{completionData.finalScore}</span>
+              </div>
+              <div className="complete-stat">
+                <span className="complete-stat-label">BONUS</span>
+                <span className="complete-stat-value">+{completionData.timeBonus}</span>
+              </div>
+            </div>
+
+            <div className="complete-points">
+              <span className="points-label">EARNED POINTS</span>
+              <span className="points-value">+{completionData.points} pt</span>
+            </div>
+
+            <button className="complete-btn" onClick={handleCompleteConfirm}>
+              COLLECT REWARD
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
